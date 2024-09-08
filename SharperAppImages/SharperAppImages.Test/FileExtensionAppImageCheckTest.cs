@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Integration;
+using SharperAppImages.Verification;
 
 namespace SharperAppImages.Test;
 
@@ -9,7 +11,7 @@ public class FileExtensionAppImageCheckTest
     {
         var fileExtensionAppImageCheck = new AppImageChecker();
         using var testFile = new UsableTestFile();
-        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath)).Should().BeFalse();
+        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath.ToPath())).Should().BeFalse();
     }
     
     [Fact]
@@ -17,7 +19,7 @@ public class FileExtensionAppImageCheckTest
     {
         var fileExtensionAppImageCheck = new AppImageChecker();
         using var testFile = new UsableTestFile(".AppImage");
-        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath)).Should().BeTrue();
+        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath.ToPath())).Should().BeTrue();
     }
     
     [Fact]
@@ -25,7 +27,7 @@ public class FileExtensionAppImageCheckTest
     {
         var fileExtensionAppImageCheck = new AppImageChecker();
         using var testFile = new UsableTestFile(".appimage");
-        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath)).Should().BeTrue();
+        (await fileExtensionAppImageCheck.IsAppImage(testFile.FilePath.ToPath())).Should().BeTrue();
     }
 
     [Fact]
@@ -35,7 +37,7 @@ public class FileExtensionAppImageCheckTest
 
         using var testFile = new UsableTestFile();
         await File.WriteAllBytesAsync(testFile.FilePath, [0, 0, 0, 0, 0, 0, 0, 0, 0x41, 0x49, 0x01]);
-        var isAppImage = await appImageCheck.IsAppImage(testFile.FilePath);
+        var isAppImage = await appImageCheck.IsAppImage(testFile.FilePath.ToPath());
         isAppImage.Should().BeTrue();
     }
 

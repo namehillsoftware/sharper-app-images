@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+using PathLib;
 
-namespace SharperAppImages;
+namespace SharperAppImages.Verification;
 
-public class LoggingAppImageChecker(ILogger<LoggingAppImageChecker> logger, IAppImageCheck inner) : DelegatingAppImageCheck(inner)
+public class LoggingAppImageChecker(ILogger<ICheckAppImages> logger, ICheckAppImages inner) : 
+    DelegatingAppImageCheck(inner)
 {
-    public override async Task<bool> IsAppImage(string path)
+    public override async Task<bool> IsAppImage(IPath path)
     {
         logger.LogInformation("Checking if {path} is an AppImage.", path);
         var isAppImage = await base.IsAppImage(path);
