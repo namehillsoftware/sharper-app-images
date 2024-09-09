@@ -39,8 +39,11 @@ public class TestAppImageExtractor
             private Because of = async () =>
                 _desktopResources = await sut.Value.ExtractDesktopResources(ExecutableAppImage.Value);
 
-            It has_the_correct_desktop_icon = () =>
+            It has_the_correct_desktop_entry = () =>
                 _desktopResources!.DesktopEntry!.FileInfo.FullName.Should().Match($"{tempDir}*echo.desktop");
+            
+            It has_the_correct_desktop_icon = () =>
+                _desktopResources!.Icons.Single().FileInfo.FullName.Should().Match($"{tempDir}*utilities-terminal.svg");
 
             private Cleanup after = () =>
             {
