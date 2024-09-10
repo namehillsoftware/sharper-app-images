@@ -28,8 +28,11 @@ var appImage = new AppImage
     Path = path,
 };
 
-var fileInfo = path.FileInfo;
-fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
+if (!OperatingSystem.IsWindows())
+{
+    var fileInfo = path.FileInfo;
+    fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
+}
 
 using var tempDirectory = new TempDirectory();
 
