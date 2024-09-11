@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.Extensions.Logging;
 using SharperAppImages;
 using SharperAppImages.Extraction;
+using SharperAppImages.Registration;
 using SharperAppImages.Verification;
 
 await using var serilogger = new LoggerConfiguration()
@@ -39,6 +40,8 @@ using var tempDirectory = new TempDirectory();
 var executionConfiguration = new ExecutionConfiguration
 {
     StagingDirectory = tempDirectory,
+    IconDirectory = new CompatPath("~/.local/share/icons"),
+    DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
 };
 
 var appImageExtractor = new LoggingAppImageExtractor(
@@ -47,11 +50,16 @@ var appImageExtractor = new LoggingAppImageExtractor(
 var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage);
 if (desktopResources == null) return -1;
 
-return isAppImage ? 0 : -1;
+var desktopAppRegistration = new LoggingAppRegistration(
+    loggerFactory.CreateLogger<LoggingAppRegistration>(),
+    new DesktopAppRegistration(executionConfiguration, executionConfiguration));
+await desktopAppRegistration.RegisterResources(appImage, desktopResources);
+
+return 0;
 
 namespace SharperAppImages
 {
-    internal class ExecutionConfiguration : IAppImageExtractionConfiguration
+    internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations
     {
         public IPath StagingDirectory { get; init; }
         public IPath IconDirectory { get; init; }

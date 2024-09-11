@@ -45,6 +45,9 @@ public class TestDesktopRegistration
                 var mimeType = scalable / "mimetypes" / "app-x.svg";
                 mimeType.Parent().Mkdir(makeParents: true);
                 await mimeType.Touch();
+
+                var rootIcon = StagingDir.Value / "big-dumb-icon.png";
+                await rootIcon.Touch();
                 
                 await DesktopAppRegistration.Value.RegisterResources(
                     new AppImage
@@ -57,13 +60,15 @@ public class TestDesktopRegistration
                         Icons = [
                             scalableIcon,
                             mimeType,
+                            rootIcon
                         ]
                     });
             };
             
             private It then_has_the_correct_launcher = () => (LauncherDir.Value / "Cura.desktop").ReadAsText()
+                .Trim()
                 .Should()
-                .BeEquivalentTo("""
+                .BeEquivalentTo($"""
                                 [Desktop Entry]
                                 Name=Ultimaker Cura
                                 Name[de]=Ultimaker Cura
@@ -71,7 +76,7 @@ public class TestDesktopRegistration
                                 GenericName[de]=3D-Druck-Software
                                 Comment=Cura converts 3D models into paths for a 3D printer. It prepares your print for maximum accuracy, minimum printing time and good reliability with many extra features that make your print come out great.
                                 Comment[de]=Cura wandelt 3D-Modelle in Pfade für einen 3D-Drucker um. Es bereitet Ihren Druck für maximale Genauigkeit, minimale Druckzeit und guter Zuverlässigkeit mit vielen zusätzlichen Funktionen vor, damit Ihr Druck großartig wird.
-                                Exec=zVzvCArxmK.appimage %F
+                                Exec={new CompatPath("zVzvCArxmK.appimage").FileInfo.FullName} %F
                                 TryExec=cura
                                 Icon=cura-icon
                                 Terminal=false
@@ -81,12 +86,13 @@ public class TestDesktopRegistration
                                 Keywords=3D;Printing;
                                 """);
 
-            private It then_installs_icons = () => IconsDir.Value.GetFiles("*.svg", SearchOption.AllDirectories)
+            private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
                 .Select(f => f.FileInfo.FullName)
                 .Should()
                 .BeEquivalentTo([
-                    (IconsDir.Value / "icons" / "scalable" / "apps" / "icon.svg").ToString(),
-                    (IconsDir.Value / "icons" / "scalable" / "mimetypes" / "app-x.svg").ToString(),
+                    (IconsDir.Value / "scalable" / "apps" / "icon.svg").ToString(),
+                    (IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToString(),
+                    (IconsDir.Value / "big-dumb-icon.png").ToString(),
                 ]);
 
             private Cleanup after = () =>
