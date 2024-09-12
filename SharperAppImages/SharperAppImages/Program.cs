@@ -19,10 +19,14 @@ var appImageChecker = new LoggingAppImageChecker(
     loggerFactory.CreateLogger<ICheckAppImages>(),
     new AppImageChecker());
 
-var path = new CompatPath(args[0]);
-var isAppImage = await appImageChecker.IsAppImage(path);
+using var cancellationTokenSource = new CancellationTokenSource();
 
-if (!isAppImage) return -1;
+Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
+
+var path = new CompatPath(args[0]);
+var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
+
+if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
 
 var appImage = new AppImage
 {
@@ -34,6 +38,8 @@ if (!OperatingSystem.IsWindows())
     var fileInfo = path.FileInfo;
     fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
 }
+
+if (cancellationTokenSource.IsCancellationRequested) return -1;
 
 using var tempDirectory = new TempDirectory();
 
@@ -47,22 +53,27 @@ var executionConfiguration = new ExecutionConfiguration
 var appImageExtractor = new LoggingAppImageExtractor(
     loggerFactory.CreateLogger<AppImageExtractor>(),
     new AppImageExtractor(executionConfiguration));
-var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage);
-if (desktopResources == null) return -1;
+var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
+if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
 var desktopAppRegistration = new LoggingAppRegistration(
     loggerFactory.CreateLogger<LoggingAppRegistration>(),
     new DesktopAppRegistration(executionConfiguration, executionConfiguration));
-await desktopAppRegistration.RegisterResources(appImage, desktopResources);
+await desktopAppRegistration.RegisterResources(appImage, desktopResources, cancellationTokenSource.Token);
+
+Console.CancelKeyPress -= OnConsoleOnCancelKeyPress;
 
 return 0;
+
+void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEventArgs) => 
+    cancellationTokenSource.Cancel();
 
 namespace SharperAppImages
 {
     internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations
     {
-        public IPath StagingDirectory { get; init; }
-        public IPath IconDirectory { get; init; }
-        public IPath DesktopEntryDirectory { get; init; }
+        public IPath StagingDirectory { get; init; } = CompatPath.Empty;
+        public IPath IconDirectory { get; init; } = CompatPath.Empty;
+        public IPath DesktopEntryDirectory { get; init; } = CompatPath.Empty;
     }
 }

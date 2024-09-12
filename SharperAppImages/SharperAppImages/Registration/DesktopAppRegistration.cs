@@ -5,17 +5,21 @@ using SharperAppImages.Extraction;
 namespace SharperAppImages.Registration;
 
 public class DesktopAppRegistration(
-    IAppImageExtractionConfiguration appImageExtractionConfiguration, 
+    IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations
 ) : IDesktopAppRegistration
 {
-    public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources)
+    public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         var stagedUsrShare = appImageExtractionConfiguration.StagingDirectory / "usr" / "share" / "icons";
         var directoryString = stagedUsrShare.DirectoryInfo.FullName;
         foreach (var icon in desktopResources.Icons)
         {
-            var newIconPath = icon.FileInfo.FullName.Contains(directoryString) ? icon.RelativeTo(stagedUsrShare) : new CompatPath(icon.Filename);
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            var newIconPath = icon.FileInfo.FullName.Contains(directoryString)
+                ? icon.RelativeTo(stagedUsrShare)
+                : new CompatPath(icon.Filename);
             newIconPath = appLocations.IconDirectory / newIconPath;
             newIconPath.Parent().Mkdir(makeParents: true);
             icon.FileInfo.CopyTo(newIconPath.FileInfo.FullName, true);
@@ -24,41 +28,46 @@ public class DesktopAppRegistration(
         var desktopEntry = desktopResources.DesktopEntry;
         if (desktopEntry != null)
         {
-            var table = await ParseDesktopEntry(desktopEntry);
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
             var entry = table["Desktop Entry"];
             var exec = entry["Exec"];
             var newEntry = appImage.Path.FileInfo.FullName;
             entry["Exec"] = [newEntry, ..exec.Skip(1)];
 
             var newDesktopEntry = appLocations.DesktopEntryDirectory / desktopEntry.Filename;
-            await WriteDesktopEntry(newDesktopEntry, table);
+            await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
         }
     }
 
-    private static async Task<Dictionary<string, Dictionary<string, IEnumerable<string>>>> ParseDesktopEntry(IPath entry)
+    private static async Task<Dictionary<string, Dictionary<string, IEnumerable<string>>>>
+        ParseDesktopEntry(IPath entry, CancellationToken cancellationToken = default)
     {
         using var entryReader = entry.FileInfo.OpenText();
         var returnValue = new Dictionary<string, Dictionary<string, IEnumerable<string>>>();
         var currentSection = new Dictionary<string, IEnumerable<string>>();
         string? line;
-        while ((line = await entryReader.ReadLineAsync()) != null)
+        while ((line = await entryReader.ReadLineAsync(cancellationToken)) != null)
         {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+            
             var trimmedLine = line.Trim();
             if (trimmedLine.StartsWith('#')) continue;
-            
+
             if (trimmedLine.StartsWith('[') && trimmedLine.EndsWith(']'))
             {
                 currentSection = new Dictionary<string, IEnumerable<string>>();
                 returnValue[trimmedLine.Trim('[', ']')] = currentSection;
                 continue;
             }
-            
+
             var (key, sections) = ParseKeyValue();
             currentSection[key] = sections;
         }
 
         return returnValue;
-        
+
         (string, IEnumerable<string>) ParseKeyValue()
         {
             var inBetweenQuotes = false;
@@ -68,8 +77,10 @@ public class DesktopAppRegistration(
             var value = keyValue[1];
             var section = new StringBuilder();
             var sections = new List<string>();
-            foreach (var c in value) {
-                if (c == '\"') {
+            foreach (var c in value)
+            {
+                if (c == '"')
+                {
                     if (inBetweenQuotes)
                         FinishSection();
 
@@ -77,20 +88,23 @@ public class DesktopAppRegistration(
                     continue;
                 }
 
-                if (inBetweenQuotes) {
-                    if (escapeNext) {
+                if (inBetweenQuotes)
+                {
+                    if (escapeNext)
+                    {
                         section.Append(c);
                         escapeNext = false;
                         continue;
                     }
 
-                    if (c == '\\') {
+                    if (c == '\\')
+                    {
                         escapeNext = true;
                         continue;
                     }
 
                     section.Append(c);
-                } 
+                }
                 else
                 {
                     if (c == ' ')
@@ -99,7 +113,7 @@ public class DesktopAppRegistration(
                         section.Append(c);
                 }
             }
-            
+
             if (section.Length > 0)
                 FinishSection();
 
@@ -115,16 +129,21 @@ public class DesktopAppRegistration(
 
     private static async Task WriteDesktopEntry(
         IPath entry,
-        Dictionary<string, Dictionary<string, IEnumerable<string>>> contents)
+        Dictionary<string, Dictionary<string, IEnumerable<string>>> contents,
+        CancellationToken cancellationToken = default)
     {
         await using var entryWriter = entry.FileInfo.CreateText();
 
         foreach (var (sectionHeader, sectionContents) in contents)
         {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
             await entryWriter.WriteLineAsync($"[{sectionHeader}]");
 
             foreach (var (key, value) in sectionContents)
             {
+                if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
                 await entryWriter.WriteLineAsync($"{key}={string.Join(" ", value)}");
             }
         }

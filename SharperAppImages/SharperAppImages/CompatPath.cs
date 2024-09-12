@@ -10,6 +10,8 @@ public class CompatPath(IPath fromPath) : IPath
         : this(Paths.Create(path))
     {
     }
+    
+    public static IPath Empty { get; } = new CompatPath(string.Empty);
 
     public string ToPosix()
     {
@@ -144,7 +146,7 @@ public class CompatPath(IPath fromPath) : IPath
         return fromPath.ListDir(pattern, scope);
     }
 
-    public IEnumerable<DirectoryContents<IPath>> WalkDir(Action<IOException> onError = null)
+    public IEnumerable<DirectoryContents<IPath>> WalkDir(Action<IOException>? onError = null)
     {
         return fromPath.WalkDir(onError);
     }

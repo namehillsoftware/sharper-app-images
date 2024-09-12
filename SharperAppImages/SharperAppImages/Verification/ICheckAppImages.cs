@@ -4,5 +4,5 @@ namespace SharperAppImages.Verification;
 
 public interface ICheckAppImages
 {
-    Task<bool> IsAppImage(IPath path);
+    Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default);
 }

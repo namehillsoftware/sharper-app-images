@@ -89,11 +89,10 @@ public class TestDesktopRegistration
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
                 .Select(f => f.FileInfo.FullName)
                 .Should()
-                .BeEquivalentTo([
+                .BeEquivalentTo(
                     (IconsDir.Value / "scalable" / "apps" / "icon.svg").ToString(),
                     (IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToString(),
-                    (IconsDir.Value / "big-dumb-icon.png").ToString(),
-                ]);
+                    (IconsDir.Value / "big-dumb-icon.png").ToString());
 
             private Cleanup after = () =>
             {
