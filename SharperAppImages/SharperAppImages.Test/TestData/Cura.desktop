@@ -14,3 +14,15 @@ Type=Application
 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
 Categories=Graphics;
 Keywords=3D;Printing;
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=librewolf %u
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=librewolf --private-window %u
+
+[Desktop Action profilemanager]
+Name=Open the Profile Manager
+Exec=librewolf --ProfileManager %u

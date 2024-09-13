@@ -18,6 +18,9 @@ public class TestDesktopRegistration
             private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
+
+            private static readonly Lazy<string> ExpectedAppImagePath =
+                new(() => new CompatPath("zVzvCArxmK.appimage").FileInfo.FullName);
             
             private static readonly Lazy<DesktopAppRegistration> DesktopAppRegistration = new(() =>
             {
@@ -65,7 +68,7 @@ public class TestDesktopRegistration
                     });
             };
             
-            private It then_has_the_correct_launcher = () => (LauncherDir.Value / "Cura.desktop").ReadAsText()
+            private It then_has_the_correct_launcher = () => (LauncherDir.Value / "zVzvCArxmK.desktop").ReadAsText()
                 .Trim()
                 .Should()
                 .BeEquivalentTo($"""
@@ -76,14 +79,26 @@ public class TestDesktopRegistration
                                 GenericName[de]=3D-Druck-Software
                                 Comment=Cura converts 3D models into paths for a 3D printer. It prepares your print for maximum accuracy, minimum printing time and good reliability with many extra features that make your print come out great.
                                 Comment[de]=Cura wandelt 3D-Modelle in Pfade für einen 3D-Drucker um. Es bereitet Ihren Druck für maximale Genauigkeit, minimale Druckzeit und guter Zuverlässigkeit mit vielen zusätzlichen Funktionen vor, damit Ihr Druck großartig wird.
-                                Exec={new CompatPath("zVzvCArxmK.appimage").FileInfo.FullName} %F
-                                TryExec=cura
+                                Exec={ExpectedAppImagePath.Value} %F
+                                TryExec={ExpectedAppImagePath.Value}
                                 Icon=cura-icon
                                 Terminal=false
                                 Type=Application
                                 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
+                                
+                                [Desktop Action new-window]
+                                Name=Open a New Window
+                                Exec={ExpectedAppImagePath.Value} %u
+                                
+                                [Desktop Action new-private-window]
+                                Name=Open a New Private Window
+                                Exec={ExpectedAppImagePath.Value} --private-window %u
+                                
+                                [Desktop Action profilemanager]
+                                Name=Open the Profile Manager
+                                Exec={ExpectedAppImagePath.Value} --ProfileManager %u
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)

@@ -26,19 +26,30 @@ public class DesktopAppRegistration(
         }
 
         var desktopEntry = desktopResources.DesktopEntry;
-        if (desktopEntry != null)
+        if (desktopEntry == null) return;
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
+        var entry = table["Desktop Entry"];
+
+        const string entryExecKey = "Exec";
+        var exec = entry[entryExecKey];
+        var appImagePath = appImage.Path.FileInfo.FullName;
+        entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
+        entry["TryExec"] = [appImagePath];
+
+        var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
+        foreach (var (_, section) in actions)
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
-            var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
-            var entry = table["Desktop Entry"];
-            var exec = entry["Exec"];
-            var newEntry = appImage.Path.FileInfo.FullName;
-            entry["Exec"] = [newEntry, ..exec.Skip(1)];
-
-            var newDesktopEntry = appLocations.DesktopEntryDirectory / desktopEntry.Filename;
-            await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
+            exec = section[entryExecKey];
+            section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         }
+
+        var newDesktopEntry = appLocations.DesktopEntryDirectory /
+                              $"{appImage.Path.BasenameWithoutExtensions}.desktop";
+        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
     }
 
     private static async Task<Dictionary<string, Dictionary<string, IEnumerable<string>>>>
@@ -53,7 +64,7 @@ public class DesktopAppRegistration(
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
             
             var trimmedLine = line.Trim();
-            if (trimmedLine.StartsWith('#')) continue;
+            if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith('#')) continue;
 
             if (trimmedLine.StartsWith('[') && trimmedLine.EndsWith(']'))
             {
@@ -146,6 +157,8 @@ public class DesktopAppRegistration(
 
                 await entryWriter.WriteLineAsync($"{key}={string.Join(" ", value)}");
             }
+
+            await entryWriter.WriteLineAsync();
         }
     }
 }
