@@ -76,7 +76,7 @@ public class TempDirectory : IDisposable, IPath
 
     public IEnumerable<IPath> ListDir(string pattern, SearchOption scope) => TempDir.ListDir(pattern, scope);
 
-    public IEnumerable<DirectoryContents<IPath>> WalkDir(Action<IOException> onError = null) => TempDir.WalkDir(onError);
+    public IEnumerable<DirectoryContents<IPath>> WalkDir(Action<IOException>? onError = null) => TempDir.WalkDir(onError);
 
     public IPath Resolve() => TempDir.Resolve();
 

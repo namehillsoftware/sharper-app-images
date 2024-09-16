@@ -1,12 +1,10 @@
 using FluentAssertions;
+using Integration.Tests;
 using Machine.Specifications;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
-using PathLib;
-using SharperAppImages;
 using SharperAppImages.Extraction;
 
-namespace Integration.Tests;
+namespace SharperAppImages.Test;
 
 [Subject(nameof(AppImageExtractor))]
 public class TestAppImageExtractor
@@ -17,12 +15,12 @@ public class TestAppImageExtractor
         {
             private static readonly Lazy<TempDirectory> tempDir = new();
 
-            private static readonly Lazy<AppImageExtractor> sut = new(() =>
+            private static readonly Lazy<SquashyAppImageExtractor> sut = new(() =>
             {
                 var config = Substitute.For<IAppImageExtractionConfiguration>();
                 config.StagingDirectory.Returns(tempDir.Value);
 
-                return new AppImageExtractor(Substitute.For<ILogger<AppImageExtractor>>(), config);
+                return new SquashyAppImageExtractor(config);
             });
 
             private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>
@@ -58,12 +56,12 @@ public class TestAppImageExtractor
             {
                 private static readonly Lazy<TempDirectory> tempDir = new();
 
-                private static readonly Lazy<AppImageExtractor> sut = new(() =>
+                private static readonly Lazy<SquashyAppImageExtractor> sut = new(() =>
                 {
                     var config = Substitute.For<IAppImageExtractionConfiguration>();
                     config.StagingDirectory.Returns(tempDir.Value);
 
-                    return new AppImageExtractor(Substitute.For<ILogger<AppImageExtractor>>(), config);
+                    return new SquashyAppImageExtractor(config);
                 });
 
                 private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>

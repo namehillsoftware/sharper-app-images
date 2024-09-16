@@ -50,10 +50,10 @@ var executionConfiguration = new ExecutionConfiguration
     DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
 };
 
-var appImageExtractorLogger = loggerFactory.CreateLogger<AppImageExtractor>();
+var appImageExtractorLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
 var appImageExtractor = new LoggingAppImageExtractor(
     appImageExtractorLogger,
-    new AppImageExtractor(appImageExtractorLogger, executionConfiguration));
+    new SquashyAppImageExtractor(executionConfiguration));
 var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 

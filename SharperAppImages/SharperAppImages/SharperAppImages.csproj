@@ -9,9 +9,11 @@
 <!--        <PublishSingleFile>True</PublishSingleFile>-->
         <PublishAot>True</PublishAot>
         <PublishTrimmed>True</PublishTrimmed>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="LTRData.DiscUtils.SquashFs" Version="1.0.47" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1"/>
         <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0"/>
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
