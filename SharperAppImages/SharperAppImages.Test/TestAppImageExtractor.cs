@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Machine.Specifications;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using PathLib;
 using SharperAppImages;
@@ -21,7 +22,7 @@ public class TestAppImageExtractor
                 var config = Substitute.For<IAppImageExtractionConfiguration>();
                 config.StagingDirectory.Returns(tempDir.Value);
 
-                return new AppImageExtractor(config);
+                return new AppImageExtractor(Substitute.For<ILogger<AppImageExtractor>>(), config);
             });
 
             private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>
@@ -62,7 +63,7 @@ public class TestAppImageExtractor
                     var config = Substitute.For<IAppImageExtractionConfiguration>();
                     config.StagingDirectory.Returns(tempDir.Value);
 
-                    return new AppImageExtractor(config);
+                    return new AppImageExtractor(Substitute.For<ILogger<AppImageExtractor>>(), config);
                 });
 
                 private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>
@@ -76,12 +77,13 @@ public class TestAppImageExtractor
                 });
 
                 private static UnexpectedAppImageExecutionCode? _unexpectedExtractionCodeException;
+                private static DesktopResources? _desktopResources;
 
                 private Because of = async () =>
                 {
                     try
                     {
-                        await sut.Value.ExtractDesktopResources(ExecutableAppImage.Value);
+                        _desktopResources = await sut.Value.ExtractDesktopResources(ExecutableAppImage.Value);
                     }
                     catch (UnexpectedAppImageExecutionCode e)
                     {

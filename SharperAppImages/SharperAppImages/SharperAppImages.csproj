@@ -5,6 +5,10 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PublishReadyToRun>True</PublishReadyToRun>
+<!--        <PublishSingleFile>True</PublishSingleFile>-->
+        <PublishAot>True</PublishAot>
+        <PublishTrimmed>True</PublishTrimmed>
     </PropertyGroup>
 
     <ItemGroup>
