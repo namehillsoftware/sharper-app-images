@@ -6,7 +6,7 @@ using SharperAppImages.Extraction;
 
 namespace SharperAppImages.Test;
 
-[Subject(nameof(AppImageExtractor))]
+[Subject(nameof(MountedAppImageExtractor))]
 public class TestAppImageExtractor
 {
     public class Given_an_executable_app_image

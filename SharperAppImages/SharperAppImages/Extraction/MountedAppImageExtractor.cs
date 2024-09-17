@@ -5,8 +5,8 @@ using PathLib;
 
 namespace SharperAppImages.Extraction;
 
-public class AppImageExtractor(
-    ILogger<AppImageExtractor> logger,
+public class MountedAppImageExtractor(
+    ILogger<MountedAppImageExtractor> logger,
     IAppImageExtractionConfiguration extractionConfiguration) : IAppImageExtractor
 {
     public async Task<DesktopResources?> ExtractDesktopResources(AppImage appImage, CancellationToken cancellationToken = default)
