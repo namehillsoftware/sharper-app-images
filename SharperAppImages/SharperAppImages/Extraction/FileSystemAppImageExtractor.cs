@@ -1,0 +1,193 @@
+using System.Text;
+using BinaryTools.Elf;
+using BinaryTools.Elf.Io;
+using DiscUtils;
+using DiscUtils.Iso9660;
+using DiscUtils.SquashFs;
+using PathLib;
+using SharpCompress.Compressors.Xz;
+using SharpCompress.Readers;
+
+namespace SharperAppImages.Extraction;
+
+public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageExtractor
+{
+    public async Task<DesktopResources?> ExtractDesktopResources(AppImage appImage, CancellationToken cancellationToken = default)
+    {
+        var appImageType = await GetAppImageType(appImage.Path, cancellationToken);
+        
+        await using var fileStream = appImage.Path.FileInfo.OpenRead();
+
+        IUnixFileSystem fileSystem = appImageType switch
+        {
+            1 => new CDReader(fileStream, true),
+            2 => GetSquashyFileSystemReader(fileStream),
+            _ => throw new Exception($"Unsupported architecture: {appImageType}"),
+        };
+
+        try
+        {
+            var desktopEntries =
+                GetStagedResources(fileSystem, "desktop", SearchOption.AllDirectories, cancellationToken);
+
+            var resources = new DesktopResources
+            {
+                DesktopEntry = desktopEntries.FirstOrDefault(),
+                Icons = GetDesktopIcons(fileSystem, cancellationToken),
+            };
+
+            return resources;
+        }
+        finally
+        {
+            if (fileStream is IDisposable disposable)
+                disposable.Dispose();
+        }
+
+        static SquashFileSystemReader GetSquashyFileSystemReader(FileStream fs)
+        {
+            var elfOffset = GetImageOffsetFromElf(fs);
+        
+            fs.Position = elfOffset;
+
+            return new SquashFileSystemReader(
+                new OffsetStream(fs),
+                new SquashFileSystemReaderOptions
+                {
+                    GetDecompressor = (kind, _) => kind switch
+                    {
+                        SquashFileSystemCompressionKind.ZStd => stream =>
+                            new ZstdSharp.DecompressionStream(stream, leaveOpen: true),
+                        SquashFileSystemCompressionKind.Xz => stream => new XZStream(stream),
+                        SquashFileSystemCompressionKind.Unknown => stream =>
+                        {
+                            var readerFactory =
+                                ReaderFactory.Open(stream, new ReaderOptions { LeaveStreamOpen = true });
+                            return readerFactory.MoveToNextEntry() ? readerFactory.OpenEntryStream() : stream;
+                        },
+                        _ => null,
+                    }
+                });
+        }
+    }
+
+    private IEnumerable<IPath> GetDesktopIcons(IUnixFileSystem mountPath, CancellationToken cancellationToken = default)
+    {
+        IEnumerable<IPath> resources =
+        [
+            ..GetStagedResources(mountPath, "png", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..GetStagedResources(mountPath, "svg", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..GetStagedResources(mountPath, "svgz", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..GetStagedResources(mountPath, "jpg", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..GetStagedResources(mountPath, "jpeg", SearchOption.TopDirectoryOnly, cancellationToken),
+        ];
+
+        var directory = mountPath.GetDirectoryInfo("usr/share/icons");
+        if (directory.Exists)
+        {
+            resources =
+            [
+                ..resources,
+                ..GetStagedResources(mountPath, directory, "png", SearchOption.AllDirectories, cancellationToken),
+                ..GetStagedResources(mountPath, directory, "svg", SearchOption.AllDirectories, cancellationToken),
+                ..GetStagedResources(mountPath, directory, "svgz", SearchOption.AllDirectories, cancellationToken),
+                ..GetStagedResources(mountPath, directory, "jpg", SearchOption.AllDirectories, cancellationToken),
+                ..GetStagedResources(mountPath, directory, "jpeg", SearchOption.AllDirectories, cancellationToken)
+            ];
+        }
+
+        return new HashSet<IPath>(resources);
+    }
+
+    private IEnumerable<IPath> GetStagedResources(IUnixFileSystem fileSystem, string resourceExtension,
+        SearchOption searchOption, CancellationToken cancellationToken = default)
+    {
+        return GetStagedResources(fileSystem, fileSystem.Root, resourceExtension, searchOption, cancellationToken);
+    }
+
+    private IEnumerable<IPath> GetStagedResources(IUnixFileSystem fileSystem, DiscDirectoryInfo rootDirectory, string resourceExtension, SearchOption searchOption, CancellationToken cancellationToken = default)
+    {
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var tmpFiles = FindFilesIgnoringLinks(fileSystem, rootDirectory, resourceExtension, searchOption, cancellationToken);
+        var resources = new LinkedList<IPath>();
+        var stagingDirectory = extractionConfiguration.StagingDirectory;
+        foreach (var tmpFile in tmpFiles)
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            var stagingPath = stagingDirectory / tmpFile.FullName;
+            stagingPath.Parent().Mkdir(makeParents: true);
+            using var fileStream = fileSystem.OpenFile(tmpFile.FullName, FileMode.Open, FileAccess.Read);
+            fileStream.CopyToAsync(stagingPath.Open(FileMode.Create), cancellationToken);
+            
+            resources.AddLast(stagingPath);
+        }
+
+        return resources;
+    }
+
+    private static IEnumerable<DiscFileSystemInfo> FindFilesIgnoringLinks(IUnixFileSystem fileSystemReader, DiscDirectoryInfo directory, string extension, SearchOption searchOption, CancellationToken cancellationToken = default)
+    {
+        var infos = directory.GetFileSystemInfos();
+        foreach (var info in infos)
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            try
+            {
+                if (fileSystemReader.GetUnixFileInfo(info.FullName).FileType == UnixFileType.Link) continue;
+            }
+            catch (NotImplementedException)
+            {
+                // Also a symlink /shrug
+                continue;
+            }
+            catch (Exception e) when (e.Message == "Data Error")
+            {
+                continue;
+            }
+
+            if (searchOption == SearchOption.AllDirectories && info.Attributes.HasFlag(FileAttributes.Directory))
+            {
+                var directoryInfo = fileSystemReader.GetDirectoryInfo(info.FullName);
+                foreach (var inner in FindFilesIgnoringLinks(fileSystemReader, directoryInfo, extension, searchOption, cancellationToken))
+                    yield return inner;
+            }
+
+            if (info.Extension != extension) continue;
+
+            yield return info;
+        }
+    }
+
+    private static int GetImageOffsetFromElf(Stream stream)
+    {
+        using var reader = new EndianBinaryReader(stream, EndianBitConverter.NativeEndianness, Encoding.UTF8, true);
+        var elfFile = ElfFile.ReadElfFile(reader);
+        var header = elfFile.Header;
+
+        var lastSection = elfFile.Sections[^1];
+        var lastSectionEnd = (ulong)0;
+        if (lastSection != null)
+        {
+            lastSectionEnd = lastSection.Offset + lastSection.Size;
+        }
+        var shSize = header.SectionHeaderOffset + (ulong)header.SectionHeaderSize * header.SectionHeaderEntryCount;
+        return (int)Math.Max(lastSectionEnd, shSize);
+    }
+    
+    private static async Task<int> GetAppImageType(IPath path, CancellationToken cancellationToken = default)
+    {
+        await using var appImageSteam = path.Open(FileMode.Open);
+        var newPosition = appImageSteam.Seek(8, SeekOrigin.Begin);
+        if (newPosition < 0) return 0;
+
+        var magicBytes = new byte[3];
+        if (await appImageSteam.ReadAsync(magicBytes, cancellationToken) != 3) return 0;
+
+        if (magicBytes[0] != 0x41 || magicBytes[1] != 0x49) return 0;
+
+        return magicBytes[2];
+    }
+}

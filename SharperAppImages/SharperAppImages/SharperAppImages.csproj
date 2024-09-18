@@ -13,6 +13,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="BinaryTools.Elf" Version="0.3.0" />
+        <PackageReference Include="LTRData.DiscUtils.Iso9660" Version="1.0.47" />
         <PackageReference Include="LTRData.DiscUtils.SquashFs" Version="1.0.47" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1"/>
         <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0"/>

@@ -53,7 +53,7 @@ var executionConfiguration = new ExecutionConfiguration
 var appImageExtractorLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
 var appImageExtractor = new LoggingAppImageExtractor(
     appImageExtractorLogger,
-    new SquashyAppImageExtractor(executionConfiguration));
+    new FileSystemAppImageExtractor(executionConfiguration));
 var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 

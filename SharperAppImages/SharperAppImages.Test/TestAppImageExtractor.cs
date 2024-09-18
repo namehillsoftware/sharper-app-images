@@ -6,7 +6,7 @@ using SharperAppImages.Extraction;
 
 namespace SharperAppImages.Test;
 
-[Subject(nameof(MountedAppImageExtractor))]
+[Subject(nameof(FileSystemAppImageExtractor))]
 public class TestAppImageExtractor
 {
     public class Given_an_executable_app_image
@@ -15,12 +15,12 @@ public class TestAppImageExtractor
         {
             private static readonly Lazy<TempDirectory> tempDir = new();
 
-            private static readonly Lazy<SquashyAppImageExtractor> sut = new(() =>
+            private static readonly Lazy<FileSystemAppImageExtractor> sut = new(() =>
             {
                 var config = Substitute.For<IAppImageExtractionConfiguration>();
                 config.StagingDirectory.Returns(tempDir.Value);
 
-                return new SquashyAppImageExtractor(config);
+                return new FileSystemAppImageExtractor(config);
             });
 
             private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>
@@ -56,12 +56,12 @@ public class TestAppImageExtractor
             {
                 private static readonly Lazy<TempDirectory> tempDir = new();
 
-                private static readonly Lazy<SquashyAppImageExtractor> sut = new(() =>
+                private static readonly Lazy<FileSystemAppImageExtractor> sut = new(() =>
                 {
                     var config = Substitute.For<IAppImageExtractionConfiguration>();
                     config.StagingDirectory.Returns(tempDir.Value);
 
-                    return new SquashyAppImageExtractor(config);
+                    return new FileSystemAppImageExtractor(config);
                 });
 
                 private static readonly Lazy<AppImage> ExecutableAppImage = new(() =>
@@ -74,22 +74,21 @@ public class TestAppImageExtractor
                     };
                 });
 
-                private static UnexpectedAppImageExecutionCode? _unexpectedExtractionCodeException;
-                private static DesktopResources? _desktopResources;
+                private static InvalidOperationException _invalidOperationException;
 
                 private Because of = async () =>
                 {
                     try
                     {
-                        _desktopResources = await sut.Value.ExtractDesktopResources(ExecutableAppImage.Value);
+                        await sut.Value.ExtractDesktopResources(ExecutableAppImage.Value);
                     }
-                    catch (UnexpectedAppImageExecutionCode e)
+                    catch (InvalidOperationException e)
                     {
-                        _unexpectedExtractionCodeException = e;
+                        _invalidOperationException = e;
                     }
                 };
 
-                It has_the_correct_exception = () => _unexpectedExtractionCodeException.Should().NotBeNull();
+                It has_the_correct_exception = () => _invalidOperationException.Message.Should().Be("No RockRidge file information available");
 
                 private Cleanup after = () =>
                 {
