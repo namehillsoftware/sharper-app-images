@@ -28,12 +28,12 @@ public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extrac
         try
         {
             var desktopEntries =
-                GetStagedResources(fileSystem, "desktop", SearchOption.AllDirectories, cancellationToken);
-
+                await GetStagedResources(fileSystem, "desktop", SearchOption.AllDirectories, cancellationToken);
+            
             var resources = new DesktopResources
             {
                 DesktopEntry = desktopEntries.FirstOrDefault(),
-                Icons = GetDesktopIcons(fileSystem, cancellationToken),
+                Icons = await GetDesktopIcons(fileSystem, cancellationToken),
             };
 
             return resources;
@@ -71,15 +71,15 @@ public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extrac
         }
     }
 
-    private IEnumerable<IPath> GetDesktopIcons(IUnixFileSystem mountPath, CancellationToken cancellationToken = default)
+    private async Task<IEnumerable<IPath>> GetDesktopIcons(IUnixFileSystem mountPath, CancellationToken cancellationToken = default)
     {
-        IEnumerable<IPath> resources =
+        IPath[] resources =
         [
-            ..GetStagedResources(mountPath, "png", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..GetStagedResources(mountPath, "svg", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..GetStagedResources(mountPath, "svgz", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..GetStagedResources(mountPath, "jpg", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..GetStagedResources(mountPath, "jpeg", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..await GetStagedResources(mountPath, "png", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..await GetStagedResources(mountPath, "svg", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..await GetStagedResources(mountPath, "svgz", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..await GetStagedResources(mountPath, "jpg", SearchOption.TopDirectoryOnly, cancellationToken),
+            ..await GetStagedResources(mountPath, "jpeg", SearchOption.TopDirectoryOnly, cancellationToken),
         ];
 
         var directory = mountPath.GetDirectoryInfo("usr/share/icons");
@@ -88,24 +88,24 @@ public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extrac
             resources =
             [
                 ..resources,
-                ..GetStagedResources(mountPath, directory, "png", SearchOption.AllDirectories, cancellationToken),
-                ..GetStagedResources(mountPath, directory, "svg", SearchOption.AllDirectories, cancellationToken),
-                ..GetStagedResources(mountPath, directory, "svgz", SearchOption.AllDirectories, cancellationToken),
-                ..GetStagedResources(mountPath, directory, "jpg", SearchOption.AllDirectories, cancellationToken),
-                ..GetStagedResources(mountPath, directory, "jpeg", SearchOption.AllDirectories, cancellationToken)
+                ..await GetStagedResources(mountPath, directory, "png", SearchOption.AllDirectories, cancellationToken),
+                ..await GetStagedResources(mountPath, directory, "svg", SearchOption.AllDirectories, cancellationToken),
+                ..await GetStagedResources(mountPath, directory, "svgz", SearchOption.AllDirectories, cancellationToken),
+                ..await GetStagedResources(mountPath, directory, "jpg", SearchOption.AllDirectories, cancellationToken),
+                ..await GetStagedResources(mountPath, directory, "jpeg", SearchOption.AllDirectories, cancellationToken)
             ];
         }
 
         return new HashSet<IPath>(resources);
     }
 
-    private IEnumerable<IPath> GetStagedResources(IUnixFileSystem fileSystem, string resourceExtension,
+    private Task<IEnumerable<IPath>> GetStagedResources(IUnixFileSystem fileSystem, string resourceExtension,
         SearchOption searchOption, CancellationToken cancellationToken = default)
     {
         return GetStagedResources(fileSystem, fileSystem.Root, resourceExtension, searchOption, cancellationToken);
     }
 
-    private IEnumerable<IPath> GetStagedResources(IUnixFileSystem fileSystem, DiscDirectoryInfo rootDirectory, string resourceExtension, SearchOption searchOption, CancellationToken cancellationToken = default)
+    private async Task<IEnumerable<IPath>> GetStagedResources(IUnixFileSystem fileSystem, DiscDirectoryInfo rootDirectory, string resourceExtension, SearchOption searchOption, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
@@ -118,8 +118,9 @@ public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extrac
 
             var stagingPath = stagingDirectory / tmpFile.FullName;
             stagingPath.Parent().Mkdir(makeParents: true);
-            using var fileStream = fileSystem.OpenFile(tmpFile.FullName, FileMode.Open, FileAccess.Read);
-            fileStream.CopyToAsync(stagingPath.Open(FileMode.Create), cancellationToken);
+            await using var fileStream = fileSystem.OpenFile(tmpFile.FullName, FileMode.Open, FileAccess.Read);
+            await using var stagingStream = stagingPath.Open(FileMode.Create); 
+            await fileStream.CopyToAsync(stagingStream, cancellationToken);
             
             resources.AddLast(stagingPath);
         }

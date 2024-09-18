@@ -17,7 +17,7 @@ public class DesktopAppRegistration(
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
-            var newIconPath = icon.FileInfo.FullName.Contains(directoryString)
+            var newIconPath = icon.FileInfo.FullName.StartsWith(directoryString)
                 ? icon.RelativeTo(stagedUsrShare)
                 : new CompatPath(icon.Filename);
             newIconPath = appLocations.IconDirectory / newIconPath;
