@@ -38,16 +38,7 @@ var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.
 
 if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
 
-if (!OperatingSystem.IsWindows())
-{
-    var fileInfo = path.FileInfo;
-    fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
-}
-
-var appImage = new AppImage
-{
-    Path = path,
-};
+var appImage = fileSystemAppImageAccess.GetExecutableAppImage(path);
 
 if (cancellationTokenSource.IsCancellationRequested) return -1;
 

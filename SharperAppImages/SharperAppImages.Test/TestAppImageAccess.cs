@@ -2,6 +2,7 @@ using FluentAssertions;
 using Integration.Tests;
 using Machine.Specifications;
 using NSubstitute;
+using PathLib;
 using SharperAppImages.Extraction;
 using SharperAppImages.Verification;
 
@@ -10,6 +11,39 @@ namespace SharperAppImages.Test;
 [Subject(nameof(FileSystemAppImageAccess))]
 public class TestAppImageAccess
 {
+    public class Given_an_app_image_path
+    {
+        public class when_getting_the_executable_app_image
+        {
+            private static readonly Lazy<TempDirectory> tempDir = new();
+
+            private static readonly Lazy<FileSystemAppImageAccess> sut = new(() =>
+            {
+                var config = Substitute.For<IAppImageExtractionConfiguration>();
+                return new FileSystemAppImageAccess(config);
+            });
+
+            private static readonly Lazy<Task<IPath>> AppImagePath = new(async () =>
+            {
+                var path = TestFixture.TestData / "OUAeISsga.appimage";
+                await path.Touch(existOk: true);
+                return path;
+            });
+
+            private static AppImage? _appImage;
+
+            private Because of = async () => _appImage = sut.Value.GetExecutableAppImage(await AppImagePath.Value);
+
+            private It is_executable = () =>
+                _appImage!.Path.FileInfo.UnixFileMode.Should().HaveFlag(UnixFileMode.UserExecute);
+            
+            private Cleanup after = () =>
+            {
+                if (tempDir.IsValueCreated) ((IDisposable)tempDir.Value).Dispose();
+            };
+        }
+    }
+
     public class Given_an_executable_app_image
     {
         public class when_the_desktop_resources_are_requested

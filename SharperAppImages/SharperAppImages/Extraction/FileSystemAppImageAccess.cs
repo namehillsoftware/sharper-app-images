@@ -11,13 +11,27 @@ using SharperAppImages.Verification;
 
 namespace SharperAppImages.Extraction;
 
-public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageExtractor, ICheckAppImages
+public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageAccess
 {
     public async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
     {
         var type = await GetAppImageType(path, cancellationToken);
     
         return type is 1 or 2 || IsAppImagePath(path);
+    }
+    
+    public AppImage GetExecutableAppImage(IPath appImagePath)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            var fileInfo = appImagePath.FileInfo;
+            fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
+        }
+
+        return new AppImage
+        {
+            Path = appImagePath,
+        };
     }
     
     public async Task<DesktopResources?> ExtractDesktopResources(AppImage appImage, CancellationToken cancellationToken = default)
