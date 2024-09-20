@@ -4,7 +4,7 @@ using PathLib;
 namespace SharperAppImages.Verification;
 
 public class LoggingAppImageChecker(ILogger<ICheckAppImages> logger, ICheckAppImages inner) : 
-    DelegatingAppImageCheck(inner)
+    DelegatingAppImageChecker(inner)
 {
     public override async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
     {

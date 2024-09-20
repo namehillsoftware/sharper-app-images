@@ -9,37 +9,14 @@ using SharperAppImages.Extraction;
 using SharperAppImages.Registration;
 using SharperAppImages.Verification;
 
+using var cancellationTokenSource = new CancellationTokenSource();
+Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
+
 await using var serilogger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
 
 using var loggerFactory = new SerilogLoggerFactory(serilogger);
-
-var appImageChecker = new LoggingAppImageChecker(
-    loggerFactory.CreateLogger<ICheckAppImages>(),
-    new AppImageChecker());
-
-using var cancellationTokenSource = new CancellationTokenSource();
-
-Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
-
-var path = new CompatPath(args[0]);
-var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
-
-if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
-
-var appImage = new AppImage
-{
-    Path = path,
-};
-
-if (!OperatingSystem.IsWindows())
-{
-    var fileInfo = path.FileInfo;
-    fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
-}
-
-if (cancellationTokenSource.IsCancellationRequested) return -1;
 
 using var tempDirectory = new TempDirectory();
 
@@ -50,11 +27,36 @@ var executionConfiguration = new ExecutionConfiguration
     DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
 };
 
-var appImageExtractorLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
-var appImageExtractor = new LoggingAppImageExtractor(
-    appImageExtractorLogger,
-    new FileSystemAppImageExtractor(executionConfiguration));
-var desktopResources = await appImageExtractor.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
+
+var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
+var appImageChecker = new LoggingAppImageChecker(
+    loggerFactory.CreateLogger<ICheckAppImages>(),
+    fileSystemAppImageAccess);
+
+var path = new CompatPath(args[0]);
+var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
+
+if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
+
+if (!OperatingSystem.IsWindows())
+{
+    var fileInfo = path.FileInfo;
+    fileInfo.UnixFileMode |= UnixFileMode.UserExecute;
+}
+
+var appImage = new AppImage
+{
+    Path = path,
+};
+
+if (cancellationTokenSource.IsCancellationRequested) return -1;
+
+var appImageAccessLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
+var appImageAccess = new LoggingAppImageExtractor(
+    appImageAccessLogger,
+    new FileSystemAppImageAccess(executionConfiguration));
+
+var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
 var desktopAppRegistration = new LoggingAppRegistration(

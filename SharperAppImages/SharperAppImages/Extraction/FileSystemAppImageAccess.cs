@@ -7,11 +7,19 @@ using DiscUtils.SquashFs;
 using PathLib;
 using SharpCompress.Compressors.Xz;
 using SharpCompress.Readers;
+using SharperAppImages.Verification;
 
 namespace SharperAppImages.Extraction;
 
-public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageExtractor
+public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageExtractor, ICheckAppImages
 {
+    public async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
+    {
+        var type = await GetAppImageType(path, cancellationToken);
+    
+        return type is 1 or 2 || IsAppImagePath(path);
+    }
+    
     public async Task<DesktopResources?> ExtractDesktopResources(AppImage appImage, CancellationToken cancellationToken = default)
     {
         var appImageType = await GetAppImageType(appImage.Path, cancellationToken);
@@ -191,4 +199,6 @@ public class FileSystemAppImageExtractor(IAppImageExtractionConfiguration extrac
 
         return magicBytes[2];
     }
+    
+    private static bool IsAppImagePath(IPath path) => path.Extension is ".AppImage" or ".appimage";
 }
