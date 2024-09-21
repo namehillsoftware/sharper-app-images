@@ -4,23 +4,17 @@ using SharperAppImages.Extraction;
 
 namespace SharperAppImages.Registration;
 
-public class DesktopAppRegistration(
+public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations
-) : IDesktopAppRegistration
+) : IDesktopResourceManagement
 {
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
-        var stagedUsrShare = appImageExtractionConfiguration.StagingDirectory / "usr" / "share" / "icons";
-        var directoryString = stagedUsrShare.DirectoryInfo.FullName;
-        foreach (var icon in desktopResources.Icons)
+        foreach (var (icon, newIconPath) in GetStagedIconPaths(desktopResources))
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
-            var newIconPath = icon.FileInfo.FullName.StartsWith(directoryString)
-                ? icon.RelativeTo(stagedUsrShare)
-                : new CompatPath(icon.Filename);
-            newIconPath = appLocations.IconDirectory / newIconPath;
             newIconPath.Parent().Mkdir(makeParents: true);
             icon.FileInfo.CopyTo(newIconPath.FileInfo.FullName, true);
         }
@@ -47,9 +41,43 @@ public class DesktopAppRegistration(
             section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         }
 
-        var newDesktopEntry = appLocations.DesktopEntryDirectory /
-                              $"{appImage.Path.BasenameWithoutExtensions}.desktop";
+        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
+    }
+
+    public Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
+    {
+        foreach (var (_, icon) in GetStagedIconPaths(desktopResources))
+        {
+            if (icon.Exists())
+                icon.Delete();
+        }
+
+        var stagedDesktopPath = GetStagedDesktopEntryPath(appImage);
+        if (stagedDesktopPath.Exists())
+            stagedDesktopPath.Delete();
+        
+        return Task.CompletedTask;
+    }
+
+    private IEnumerable<(IPath source, IPath target)> GetStagedIconPaths(DesktopResources desktopResources)
+    {
+        var stagedUsrShare = appImageExtractionConfiguration.StagingDirectory / "usr" / "share" / "icons";
+        var directoryString = stagedUsrShare.DirectoryInfo.FullName;
+        foreach (var icon in desktopResources.Icons)
+        {
+            var newIconPath = icon.FileInfo.FullName.StartsWith(directoryString)
+                ? icon.RelativeTo(stagedUsrShare)
+                : new CompatPath(icon.Filename);
+            newIconPath = appLocations.IconDirectory / newIconPath;
+
+            yield return (icon, newIconPath);
+        }
+    }
+
+    private IPath GetStagedDesktopEntryPath(AppImage appImage)
+    {
+        return appLocations.DesktopEntryDirectory / $"{appImage.Path.Filename}.desktop";
     }
 
     private static async Task<Dictionary<string, Dictionary<string, IEnumerable<string>>>>

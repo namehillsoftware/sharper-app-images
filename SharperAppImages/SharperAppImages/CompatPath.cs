@@ -10,6 +10,10 @@ public class CompatPath(IPath fromPath) : IPath
         : this(Paths.Create(path))
     {
     }
+
+    public CompatPath(IPurePath path) : this(path as IPath ?? Paths.Create(path.ToPosix()))
+    {
+    }
     
     public static IPath Empty { get; } = new CompatPath(string.Empty);
 

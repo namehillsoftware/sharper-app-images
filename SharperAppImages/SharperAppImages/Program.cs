@@ -28,7 +28,6 @@ var executionConfiguration = new ExecutionConfiguration
     DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
 };
 
-
 var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
 var appImageChecker = new LoggingAppImageChecker(
     loggerFactory.CreateLogger<ICheckAppImages>(),
@@ -51,10 +50,18 @@ var appImageAccess = new LoggingAppImageExtractor(
 var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
-var desktopAppRegistration = new LoggingAppRegistration(
-    loggerFactory.CreateLogger<LoggingAppRegistration>(),
-    new DesktopAppRegistration(executionConfiguration, executionConfiguration));
-await desktopAppRegistration.RegisterResources(appImage, desktopResources, cancellationTokenSource.Token);
+var desktopAppRegistration = new LoggingResourceManagement(
+    loggerFactory.CreateLogger<LoggingResourceManagement>(),
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration));
+
+if (args.Length > 1 && args[1] == "--remove")
+{
+    await desktopAppRegistration.RemoveResources(appImage, desktopResources, cancellationTokenSource.Token);
+}
+else
+{
+    await desktopAppRegistration.RegisterResources(appImage, desktopResources, cancellationTokenSource.Token);
+}
 
 Console.CancelKeyPress -= OnConsoleOnCancelKeyPress;
 

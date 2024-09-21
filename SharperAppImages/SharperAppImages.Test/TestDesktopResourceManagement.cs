@@ -8,8 +8,8 @@ using SharperAppImages.Registration;
 
 namespace SharperAppImages.Test;
 
-[Subject(nameof(DesktopAppRegistration))]
-public class TestDesktopRegistration
+[Subject(nameof(DesktopResourceManagement))]
+public class TestDesktopResourceManagement
 {
     public class Given_an_AppImage
     {
@@ -22,7 +22,7 @@ public class TestDesktopRegistration
             private static readonly Lazy<string> ExpectedAppImagePath =
                 new(() => new CompatPath("zVzvCArxmK.appimage").FileInfo.FullName);
             
-            private static readonly Lazy<DesktopAppRegistration> DesktopAppRegistration = new(() =>
+            private static readonly Lazy<DesktopResourceManagement> DesktopAppRegistration = new(() =>
             {
                 var extractionConfig = Substitute.For<IAppImageExtractionConfiguration>();
                 extractionConfig.StagingDirectory.Returns(StagingDir.Value);
@@ -31,7 +31,7 @@ public class TestDesktopRegistration
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
-                return new DesktopAppRegistration(extractionConfig, desktopAppLocations);
+                return new DesktopResourceManagement(extractionConfig, desktopAppLocations);
             });
 
             private Because of = async () =>
@@ -68,7 +68,7 @@ public class TestDesktopRegistration
                     });
             };
             
-            private It then_has_the_correct_launcher = () => (LauncherDir.Value / "zVzvCArxmK.desktop").ReadAsText()
+            private It then_has_the_correct_launcher = () => (LauncherDir.Value / "zVzvCArxmK.appimage.desktop").ReadAsText()
                 .Trim()
                 .Should()
                 .BeEquivalentTo($"""
@@ -115,6 +115,106 @@ public class TestDesktopRegistration
                 if (LauncherDir.IsValueCreated) ((IDisposable)LauncherDir.Value).Dispose();
                 if (StagingDir.IsValueCreated) ((IDisposable)StagingDir.Value).Dispose();
             };
+        }
+
+        public class and_the_resources_are_registered
+        {
+            public class when_removing_the_resources
+            {
+                private static readonly AppImage _appImage = new()
+                {
+                    Path = new CompatPath("xa6uxFIwo8e.AppImage")
+                };
+                
+                private static readonly Lazy<IPurePath[]> RelativeIconPaths = new(() =>
+                {
+                    var scalableDir = PurePath.Create("scalable");
+                    
+                    return
+                    [
+                        scalableDir.Join("apps", "JrUje2K23.jpg"),
+                        scalableDir.Join("mimetypes", "ztSWdcaCH.svg"),
+                        PurePath.Create("smart-little-icon.png"),
+                    ];
+                });
+                
+                private static readonly Lazy<Task<IPath>> IconsDir = new(async () =>
+                {
+                    var iconsDir = new TempDirectory();
+
+                    foreach (var iconPath in RelativeIconPaths.Value)
+                    {
+                        var path = new CompatPath(iconsDir / iconPath);
+                        path.Parent().Mkdir(true);
+
+                        await path.Touch(true);
+                    }
+                    
+                    return iconsDir;
+                });
+                
+                private static readonly Lazy<Task<IPath>> LauncherDir = new(async () =>
+                {
+                    var tempDir = new TempDirectory();
+                    
+                    var installedLauncher = tempDir / $"{_appImage.Path.Filename}.desktop";
+                    await installedLauncher.Touch(true);
+                    return tempDir;
+                });
+                
+                private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
+
+                private static readonly Lazy<Task<DesktopResourceManagement>> DesktopAppRegistration = new(async () =>
+                {
+                    var extractionConfig = Substitute.For<IAppImageExtractionConfiguration>();
+                    extractionConfig.StagingDirectory.Returns(StagingDir.Value);
+
+                    var desktopAppLocations = Substitute.For<IDesktopAppLocations>();
+                    desktopAppLocations.DesktopEntryDirectory.Returns(await LauncherDir.Value);
+                    desktopAppLocations.IconDirectory.Returns(await IconsDir.Value);
+
+                    return new DesktopResourceManagement(extractionConfig, desktopAppLocations);
+                });
+
+                private Because of = async () =>
+                {
+                    var desktopEntry = TestFixture.TestData / "Cura.desktop";
+
+                    var iconsDir = new CompatPath("usr/share/icons");
+
+                    var desktopIcons = new List<IPath>();
+                    
+                    foreach (var iconPath in RelativeIconPaths.Value)
+                    {
+                        var path = new CompatPath(iconsDir / iconPath);
+                        path.Parent().Mkdir(true);
+
+                        await path.Touch(existOk: true);
+                        desktopIcons.Add(path);
+                    }
+                    
+                    await (await DesktopAppRegistration.Value).RemoveResources(
+                        _appImage,
+                        new DesktopResources
+                        {
+                            DesktopEntry = desktopEntry,
+                            Icons = desktopIcons,
+                        });
+                };
+
+                private It has_an_empty_launcher_desktop_dir = async () =>
+                    (await LauncherDir.Value).GetFiles("*").Should().BeEmpty();
+                
+                private It has_an_empty_icons_dir = async () =>
+                    (await IconsDir.Value).GetFiles("*").Should().BeEmpty();
+                
+                private Cleanup after = () =>
+                {
+                    if (IconsDir.IsValueCreated) ((IDisposable)IconsDir.Value).Dispose();
+                    if (LauncherDir.IsValueCreated) ((IDisposable)LauncherDir.Value).Dispose();
+                    if (StagingDir.IsValueCreated) ((IDisposable)StagingDir.Value).Dispose();
+                };
+            }
         }
     }
 }
