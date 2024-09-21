@@ -2,7 +2,7 @@ namespace SharperAppImages.Extraction;
 
 public class OffsetStream(Stream streamImplementation) : Stream
 {
-    private readonly int initialOffset = (int)streamImplementation.Position;
+    private readonly long initialOffset = streamImplementation.Position;
     
     public override void Flush()
     {
@@ -26,7 +26,7 @@ public class OffsetStream(Stream streamImplementation) : Stream
 
     public override void Write(byte[] buffer, int offset, int count)
     {
-        streamImplementation.Write(buffer, offset + initialOffset, count);
+        streamImplementation.Write(buffer, offset, count);
     }
 
     public override bool CanRead => streamImplementation.CanRead;

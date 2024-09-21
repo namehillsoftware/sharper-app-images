@@ -1,7 +1,8 @@
 using PathLib;
+using SharperAppImages.Extraction;
 using SharperAppImages.Verification;
 
-namespace SharperAppImages.Extraction;
+namespace SharperAppImages.Access;
 
 public interface IAppImageAccess : IAppImageExtractor, ICheckAppImages
 {

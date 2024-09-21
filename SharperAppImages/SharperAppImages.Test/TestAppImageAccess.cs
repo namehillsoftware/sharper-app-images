@@ -3,6 +3,7 @@ using Integration.Tests;
 using Machine.Specifications;
 using NSubstitute;
 using PathLib;
+using SharperAppImages.Access;
 using SharperAppImages.Extraction;
 using SharperAppImages.Verification;
 

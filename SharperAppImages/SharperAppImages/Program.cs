@@ -5,6 +5,7 @@ using PathLib;
 using Serilog;
 using Serilog.Extensions.Logging;
 using SharperAppImages;
+using SharperAppImages.Access;
 using SharperAppImages.Extraction;
 using SharperAppImages.Registration;
 using SharperAppImages.Verification;
