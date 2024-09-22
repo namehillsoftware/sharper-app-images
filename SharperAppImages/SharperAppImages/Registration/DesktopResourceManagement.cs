@@ -11,7 +11,8 @@ public class DesktopResourceManagement(
 {
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
-        foreach (var (icon, newIconPath) in GetStagedIconPaths(desktopResources))
+        var stagedIconPaths = GetStagedIconPaths(desktopResources).ToArray();
+        foreach (var (icon, newIconPath) in stagedIconPaths)
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
@@ -42,6 +43,15 @@ public class DesktopResourceManagement(
         }
 
         var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
+
+        var newAction = new Dictionary<string, IEnumerable<string>>
+        {
+            ["Name"] = ["Remove AppImage"],
+            ["Exec"] = ["rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
+        };
+        
+        table["Desktop Action remove-app-image"] = newAction;
+
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
     }
 

@@ -99,6 +99,10 @@ public class TestDesktopResourceManagement
                                 [Desktop Action profilemanager]
                                 Name=Open the Profile Manager
                                 Exec={ExpectedAppImagePath.Value} --ProfileManager %u
+                                
+                                [Desktop Action remove-app-image]
+                                Name=Remove AppImage
+                                Exec=rm -f "{(IconsDir.Value / "scalable" / "apps" / "icon.svg").ToPosix()}" "{(IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToPosix()}" "{(IconsDir.Value / "big-dumb-icon.png").ToPosix()}" "{(LauncherDir.Value / "zVzvCArxmK.appimage.desktop").ToPosix()}"
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
