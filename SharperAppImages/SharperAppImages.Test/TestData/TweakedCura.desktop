@@ -14,13 +14,13 @@ Type=Application
 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
 Categories=Graphics;
 Keywords=3D;Printing;
-Actions=new-window;new-private-window
+Actions=Atligula;Euismodsuspendisse;
 
-[Desktop Action new-window]
+[Desktop Action Atligula]
 Name=Open a New Window
-Exec=librewolf %u
+Exec=cura %u
 
-[Desktop Action new-private-window]
+[Desktop Action Euismodsuspendisse]
 Name=Open a New Private Window
 Exec=librewolf --private-window %u
 

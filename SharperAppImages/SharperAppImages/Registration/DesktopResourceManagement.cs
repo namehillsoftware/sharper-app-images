@@ -34,7 +34,7 @@ public class DesktopResourceManagement(
         entry["TryExec"] = [appImagePath];
 
         var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
-        foreach (var (_, section) in actions)
+        foreach (var (action, section) in actions)
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
@@ -46,11 +46,32 @@ public class DesktopResourceManagement(
 
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
-            ["Name"] = ["Remove AppImage"],
+            ["Name"] = ["Remove AppImage from Desktop"],
             ["Exec"] = ["rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
         };
+
+        const string removeAppImageAction = "remove-app-image";
+        table[$"Desktop Action {removeAppImageAction}"] = newAction;
         
-        table["Desktop Action remove-app-image"] = newAction;
+        var declaredActions = string.Empty;
+        if (entry.TryGetValue("Actions", out var existingActions))
+        {
+            declaredActions = existingActions.SingleOrDefault();
+            if (!string.IsNullOrWhiteSpace(declaredActions))
+            {
+                if (!declaredActions.EndsWith(';'))
+                {
+                    declaredActions += ";";
+                }
+            }
+            else
+            {
+                declaredActions = string.Empty;
+            }
+        }
+        declaredActions += removeAppImageAction;
+        
+        entry["Actions"] = [declaredActions];
 
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
     }
