@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharperAppImages", "SharperAppImages\SharperAppImages.csproj", "{80C035F5-E60C-4C77-9A2D-8EDAE8FAF163}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharperIntegration", "SharperIntegration\SharperIntegration.csproj", "{80C035F5-E60C-4C77-9A2D-8EDAE8FAF163}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{A7F94CDF-8490-41AA-9F05-922C2F392D07}"
 	ProjectSection(SolutionItems) = preProject
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharperAppImages.Test", "SharperAppImages.Test\SharperAppImages.Test.csproj", "{4FD63DB7-C89B-4DF8-9AE4-3F6B28A1CA2E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharperIntegration.Test", "SharperIntegration.Test\SharperIntegration.Test.csproj", "{4FD63DB7-C89B-4DF8-9AE4-3F6B28A1CA2E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
