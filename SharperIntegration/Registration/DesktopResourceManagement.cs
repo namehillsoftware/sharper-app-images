@@ -34,7 +34,7 @@ public class DesktopResourceManagement(
         entry["TryExec"] = [appImagePath];
 
         var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
-        foreach (var (action, section) in actions)
+        foreach (var (_, section) in actions)
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 

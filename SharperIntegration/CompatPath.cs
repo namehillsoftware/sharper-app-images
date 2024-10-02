@@ -24,7 +24,7 @@ public class CompatPath(IPath fromPath) : IPath
 
     public bool IsAbsolute()
     {
-        return fromPath.IsAbsolute();
+        return Path.IsPathRooted(ToString());
     }
 
     public bool IsReserved()
@@ -122,7 +122,7 @@ public class CompatPath(IPath fromPath) : IPath
 
     public bool Exists()
     {
-        return fromPath.Exists();
+        return Path.Exists(fromPath.ToString());
     }
 
     public bool IsDir()
