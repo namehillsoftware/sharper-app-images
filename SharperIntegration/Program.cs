@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using PathLib;
 using Serilog;
@@ -33,7 +34,11 @@ var appImageChecker = new LoggingAppImageChecker(
     loggerFactory.CreateLogger<ICheckAppImages>(),
     fileSystemAppImageAccess);
 
-var path = new CompatPath(args[0]);
+var fileName = args.Length > 0 ? args[0] : Environment.CommandLine;
+
+if (string.IsNullOrWhiteSpace(fileName)) return -1;
+
+var path = new CompatPath(fileName);
 var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
 
 if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
