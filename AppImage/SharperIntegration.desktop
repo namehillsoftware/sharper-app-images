@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Sharper Integration
+GenericName=AppImage Desktop Integration
+Comment=Sharper Integration integrates your apps into your Linux desktop.
+Exec=SharperIntegration %F
+TryExec=SharperIntegration
+Icon=utilities-terminal
+Terminal=true
+Type=Application
+MimeType=application/vnd.appimage;
+Categories=Utility;
+Keywords=AppImage;Integration;Desktop

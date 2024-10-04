@@ -8,8 +8,7 @@ BUILD_ID="$(od  -vN "8" -An -tx1  /dev/urandom | tr -d " \n")"
 
 echo "Build ID: ${BUILD_ID}"
 
-TAG_ID="${BUILD_ID}" docker compose build && TAG_ID="${BUILD_ID}" docker compose run --name "${BUILD_ID}" \
- 	dotnet publish --no-restore --self-contained true -p:DebugType=None -p:DebugSymbols=false -o /out
+docker buildx build --tag "${BUILD_ID}" . && docker run --name "${BUILD_ID}" --privileged "${BUILD_ID}"
  	
 BUILD_CONTAINER=${BUILD_ID}
 
@@ -19,4 +18,4 @@ docker image rm "${BUILD_ID}"
     
 EXIT_CODE=${PIPESTATUS[0]}
 
-EXIT $EXIT_CODE
+exit "$EXIT_CODE"
