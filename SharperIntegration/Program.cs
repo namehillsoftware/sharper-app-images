@@ -55,9 +55,9 @@ var appImageAccess = new LoggingAppImageExtractor(
 var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
-var desktopAppRegistration = new LoggingResourceManagement(
+var desktopAppRegistration = new InteractiveDesktopRegistration(new LoggingResourceManagement(
     loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration, new ProcessStarter()));
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration, new ProcessStarter())));
 
 if (args.Length > 1 && args[1] == "--remove")
 {
