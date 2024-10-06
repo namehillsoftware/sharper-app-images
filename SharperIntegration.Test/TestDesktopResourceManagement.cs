@@ -5,6 +5,7 @@ using NSubstitute;
 using PathLib;
 using SharperIntegration.Extraction;
 using SharperIntegration.Registration;
+using SharperIntegration.UI;
 
 namespace SharperIntegration.Test;
 
@@ -31,7 +32,15 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
-                return new DesktopResourceManagement(extractionConfig, desktopAppLocations, Substitute.For<IStartProcesses>());
+                var dialogControl = Substitute.For<IDialogControl>();
+                dialogControl.GetYesNoDialogCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(["YesNo", "lCfdW5HOmVL"]);
+                
+                return new DesktopResourceManagement(
+                    extractionConfig,
+                    desktopAppLocations,
+                    dialogControl,
+                    Substitute.For<IStartProcesses>());
             });
 
             private Because of = async () =>
@@ -103,7 +112,7 @@ public class TestDesktopResourceManagement
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec=rm -f "{(IconsDir.Value / "scalable" / "apps" / "icon.svg").ToPosix()}" "{(IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToPosix()}" "{(IconsDir.Value / "big-dumb-icon.png").ToPosix()}" "{(LauncherDir.Value / "zVzvCArxmK.appimage.desktop").ToPosix()}"
+                                Exec=YesNo lCfdW5HOmVL && rm -f "{(IconsDir.Value / "scalable" / "apps" / "icon.svg").ToPosix()}" "{(IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToPosix()}" "{(IconsDir.Value / "big-dumb-icon.png").ToPosix()}" "{(LauncherDir.Value / "zVzvCArxmK.appimage.desktop").ToPosix()}"
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -143,6 +152,7 @@ public class TestDesktopResourceManagement
                 return new DesktopResourceManagement(
                     extractionConfig, 
                     desktopAppLocations,
+                    Substitute.For<IDialogControl>(),
                     Substitute.For<IStartProcesses>());
             });
 
@@ -288,6 +298,7 @@ public class TestDesktopResourceManagement
                     return new DesktopResourceManagement(
                         extractionConfig,
                         desktopAppLocations,
+                        Substitute.For<IDialogControl>(),
                         Substitute.For<IStartProcesses>());
                 });
 

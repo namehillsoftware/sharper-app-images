@@ -2,15 +2,19 @@ using System.Diagnostics;
 using System.Text;
 using PathLib;
 using SharperIntegration.Extraction;
+using SharperIntegration.UI;
 
 namespace SharperIntegration.Registration;
 
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations,
+    IDialogControl dialogControl,
     IStartProcesses processes
 ) : IDesktopResourceManagement
 {
+    private const string RemovalQuestion = "Remove {0} from Desktop?";
+
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         var stagedIconPaths = GetStagedIconPaths(desktopResources).ToArray();
@@ -46,10 +50,20 @@ public class DesktopResourceManagement(
 
         var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
 
+        var dialogCommand = await dialogControl.GetYesNoDialogCommand(
+            "Remove from Desktop?", 
+            string.Format(RemovalQuestion, appImage.Path.Basename),
+            cancellationToken);
+
+        if (dialogCommand.Length > 0)
+        {
+            dialogCommand = [..dialogCommand, "&&"];
+        }
+        
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
             ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = ["rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
+            ["Exec"] = [..dialogCommand, "rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
         };
 
         const string removeAppImageAction = "remove-app-image";
@@ -58,17 +72,10 @@ public class DesktopResourceManagement(
         var declaredActions = string.Empty;
         if (entry.TryGetValue("Actions", out var existingActions))
         {
-            declaredActions = existingActions.SingleOrDefault();
-            if (!string.IsNullOrWhiteSpace(declaredActions))
+            declaredActions = existingActions.SingleOrDefault()?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(declaredActions) && !declaredActions.EndsWith(';'))
             {
-                if (!declaredActions.EndsWith(';'))
-                {
-                    declaredActions += ";";
-                }
-            }
-            else
-            {
-                declaredActions = string.Empty;
+                declaredActions += ";";
             }
         }
         declaredActions += removeAppImageAction;
@@ -201,7 +208,7 @@ public class DesktopResourceManagement(
         }
     }
 
-    private Task TriggerDesktopUpdates(CancellationToken cancellationToken = default)
+    private Task<int> TriggerDesktopUpdates(CancellationToken cancellationToken = default)
     {
         return processes.RunProcess("xdg-desktop-menu", ["forceupdate"], cancellationToken);
     }

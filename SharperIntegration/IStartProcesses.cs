@@ -4,5 +4,5 @@ namespace SharperIntegration;
 
 public interface IStartProcesses
 {
-    Task RunProcess(string processName, string[] args, CancellationToken cancellationToken = default);
+    Task<int> RunProcess(string processName, string[] args, CancellationToken cancellationToken = default);
 }

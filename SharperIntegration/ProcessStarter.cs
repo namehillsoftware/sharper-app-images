@@ -4,6 +4,10 @@ namespace SharperIntegration;
 
 public class ProcessStarter : IStartProcesses
 {
-    public Task RunProcess(string processName, string[] args, CancellationToken cancellationToken = default) =>
-        Process.Start(processName, args).WaitForExitAsync(cancellationToken);
+    public async Task<int> RunProcess(string processName, string[] args, CancellationToken cancellationToken = default)
+    {
+        var process = Process.Start(processName, args);
+        await process.WaitForExitAsync(cancellationToken);
+        return process.ExitCode;
+    }
 }

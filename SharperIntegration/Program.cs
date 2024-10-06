@@ -10,6 +10,7 @@ using SharperIntegration.Access;
 using SharperIntegration.Verification;
 using SharperIntegration.Extraction;
 using SharperIntegration.Registration;
+using SharperIntegration.UI;
 
 using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
@@ -55,9 +56,14 @@ var appImageAccess = new LoggingAppImageExtractor(
 var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
-var desktopAppRegistration = new InteractiveDesktopRegistration(new LoggingResourceManagement(
-    loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration, new ProcessStarter())));
+var dialogControl = new DialogControl();
+var processStarter = new ProcessStarter();
+var desktopAppRegistration = new InteractiveResourceManagement(
+    new LoggingResourceManagement(
+        loggerFactory.CreateLogger<LoggingResourceManagement>(),
+        new DesktopResourceManagement(executionConfiguration, executionConfiguration, dialogControl,  processStarter)),
+    dialogControl,
+    processStarter);
 
 if (args.Length > 1 && args[1] == "--remove")
 {
