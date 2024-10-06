@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using PathLib;
 using SharperIntegration.Extraction;
@@ -6,7 +7,8 @@ namespace SharperIntegration.Registration;
 
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
-    IDesktopAppLocations appLocations
+    IDesktopAppLocations appLocations,
+    IStartProcesses processes
 ) : IDesktopResourceManagement
 {
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
@@ -74,9 +76,11 @@ public class DesktopResourceManagement(
         entry["Actions"] = [declaredActions];
 
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
+        
+        await TriggerDesktopUpdates(cancellationToken);
     }
 
-    public Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
+    public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         foreach (var (_, icon) in GetStagedIconPaths(desktopResources))
         {
@@ -87,8 +91,8 @@ public class DesktopResourceManagement(
         var stagedDesktopPath = GetStagedDesktopEntryPath(appImage);
         if (stagedDesktopPath.Exists())
             stagedDesktopPath.Delete();
-        
-        return Task.CompletedTask;
+
+        await TriggerDesktopUpdates(cancellationToken);
     }
 
     private IEnumerable<(IPath source, IPath target)> GetStagedIconPaths(DesktopResources desktopResources)
@@ -195,6 +199,11 @@ public class DesktopResourceManagement(
                 section.Clear();
             }
         }
+    }
+
+    private Task TriggerDesktopUpdates(CancellationToken cancellationToken = default)
+    {
+        return processes.RunProcess("xdg-desktop-menu", ["forceupdate"], cancellationToken);
     }
 
     private static async Task WriteDesktopEntry(

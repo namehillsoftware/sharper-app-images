@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FluentAssertions;
 using Machine.Specifications;
 using NSubstitute;
@@ -30,7 +31,7 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
-                return new DesktopResourceManagement(extractionConfig, desktopAppLocations);
+                return new DesktopResourceManagement(extractionConfig, desktopAppLocations, Substitute.For<IStartProcesses>());
             });
 
             private Because of = async () =>
@@ -139,7 +140,10 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
-                return new DesktopResourceManagement(extractionConfig, desktopAppLocations);
+                return new DesktopResourceManagement(
+                    extractionConfig, 
+                    desktopAppLocations,
+                    Substitute.For<IStartProcesses>());
             });
 
             private Because of = async () =>
@@ -281,7 +285,10 @@ public class TestDesktopResourceManagement
                     desktopAppLocations.DesktopEntryDirectory.Returns(await LauncherDir.Value);
                     desktopAppLocations.IconDirectory.Returns(await IconsDir.Value);
 
-                    return new DesktopResourceManagement(extractionConfig, desktopAppLocations);
+                    return new DesktopResourceManagement(
+                        extractionConfig,
+                        desktopAppLocations,
+                        Substitute.For<IStartProcesses>());
                 });
 
                 private Because of = async () =>

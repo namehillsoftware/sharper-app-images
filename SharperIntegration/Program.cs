@@ -57,7 +57,7 @@ if (desktopResources == null || cancellationTokenSource.IsCancellationRequested)
 
 var desktopAppRegistration = new LoggingResourceManagement(
     loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration));
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration, new ProcessStarter()));
 
 if (args.Length > 1 && args[1] == "--remove")
 {
