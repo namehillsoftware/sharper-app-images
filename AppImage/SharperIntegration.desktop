@@ -8,5 +8,5 @@ Icon=utilities-terminal
 Terminal=true
 Type=Application
 MimeType=application/vnd.appimage;
-Categories=Utility;
+Categories=Utility;System;
 Keywords=AppImage;Integration;Desktop

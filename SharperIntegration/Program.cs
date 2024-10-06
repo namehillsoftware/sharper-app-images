@@ -58,12 +58,14 @@ if (desktopResources == null || cancellationTokenSource.IsCancellationRequested)
 
 var dialogControl = new DialogControl();
 var processStarter = new ProcessStarter();
-var desktopAppRegistration = new InteractiveResourceManagement(
-    new LoggingResourceManagement(
-        loggerFactory.CreateLogger<LoggingResourceManagement>(),
-        new DesktopResourceManagement(executionConfiguration, executionConfiguration, dialogControl,  processStarter)),
-    dialogControl,
-    processStarter);
+IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
+    loggerFactory.CreateLogger<LoggingResourceManagement>(),
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration, dialogControl,  processStarter));
+
+if (!args.Contains("--force"))
+{
+    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, processStarter);
+}
 
 if (args.Length > 1 && args[1] == "--remove")
 {
