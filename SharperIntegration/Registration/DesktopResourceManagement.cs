@@ -25,64 +25,8 @@ public class DesktopResourceManagement(
             newIconPath.Parent().Mkdir(makeParents: true);
             icon.FileInfo.CopyTo(newIconPath.FileInfo.FullName, true);
         }
-
-        var desktopEntry = desktopResources.DesktopEntry;
-        if (desktopEntry == null) return;
-        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-
-        var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
-        var entry = table["Desktop Entry"];
-
-        const string entryExecKey = "Exec";
-        var exec = entry[entryExecKey];
-        var appImagePath = appImage.Path.FileInfo.FullName;
-        entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
-        entry["TryExec"] = [appImagePath];
-
-        var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
-        foreach (var (_, section) in actions)
-        {
-            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-
-            exec = section[entryExecKey];
-            section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
-        }
-
-        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
-
-        var dialogCommand = await dialogControl.GetYesNoDialogCommand(
-            "Remove from Desktop?", 
-            string.Format(RemovalQuestion, appImage.Path.Basename),
-            cancellationToken);
-
-        if (dialogCommand.Length > 0)
-        {
-            dialogCommand = [..dialogCommand, "&&"];
-        }
         
-        var newAction = new Dictionary<string, IEnumerable<string>>
-        {
-            ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = [..dialogCommand, "rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
-        };
-
-        const string removeAppImageAction = "remove-app-image";
-        table[$"Desktop Action {removeAppImageAction}"] = newAction;
-        
-        var declaredActions = string.Empty;
-        if (entry.TryGetValue("Actions", out var existingActions))
-        {
-            declaredActions = existingActions.SingleOrDefault()?.Trim() ?? string.Empty;
-            if (!string.IsNullOrEmpty(declaredActions) && !declaredActions.EndsWith(';'))
-            {
-                declaredActions += ";";
-            }
-        }
-        declaredActions += removeAppImageAction;
-        
-        entry["Actions"] = [declaredActions];
-
-        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
+        await ModifyDesktopEntry(appImage, desktopResources, cancellationToken);
         
         await TriggerDesktopUpdates(cancellationToken);
     }
@@ -115,6 +59,57 @@ public class DesktopResourceManagement(
 
             yield return (icon, newIconPath);
         }
+    }
+
+    private async Task ModifyDesktopEntry(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
+    {
+        var desktopEntry = desktopResources.DesktopEntry;
+        if (desktopEntry == null) return;
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
+        var entry = table["Desktop Entry"];
+
+        const string entryExecKey = "Exec";
+        var exec = entry[entryExecKey];
+        var appImagePath = appImage.Path.FileInfo.FullName;
+        entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
+        entry["TryExec"] = [appImagePath];
+
+        var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
+        foreach (var (_, section) in actions)
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            exec = section[entryExecKey];
+            section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
+        }
+        
+        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
+        
+        var newAction = new Dictionary<string, IEnumerable<string>>
+        {
+            ["Name"] = ["Remove AppImage from Desktop"],
+            ["Exec"] = [Environment.CommandLine, appImagePath, "--remove"],
+        };
+
+        const string removeAppImageAction = "remove-app-image";
+        table[$"Desktop Action {removeAppImageAction}"] = newAction;
+        
+        var declaredActions = string.Empty;
+        if (entry.TryGetValue("Actions", out var existingActions))
+        {
+            declaredActions = existingActions.SingleOrDefault()?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(declaredActions) && !declaredActions.EndsWith(';'))
+            {
+                declaredActions += ";";
+            }
+        }
+        declaredActions += removeAppImageAction;
+        
+        entry["Actions"] = [declaredActions];
+
+        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);   
     }
 
     private IPath GetStagedDesktopEntryPath(AppImage appImage)

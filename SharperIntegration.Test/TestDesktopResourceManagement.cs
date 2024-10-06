@@ -112,7 +112,7 @@ public class TestDesktopResourceManagement
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec=YesNo lCfdW5HOmVL && rm -f "{(IconsDir.Value / "scalable" / "apps" / "icon.svg").ToPosix()}" "{(IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToPosix()}" "{(IconsDir.Value / "big-dumb-icon.png").ToPosix()}" "{(LauncherDir.Value / "zVzvCArxmK.appimage.desktop").ToPosix()}"
+                                Exec={Environment.CommandLine} {ExpectedAppImagePath.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -179,7 +179,8 @@ public class TestDesktopResourceManagement
                     new DesktopResources
                     {
                         DesktopEntry = desktopEntry,
-                        Icons = [
+                        Icons = 
+                        [
                             scalableIcon,
                             mimeType,
                         ]
@@ -221,7 +222,7 @@ public class TestDesktopResourceManagement
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec=rm -f "{(IconsDir.Value / "Cursuselit" / "apps" / "icon.svgz").ToPosix()}" "{(IconsDir.Value / "Cursuselit" / "mimetypes" / "app-x.svg").ToPosix()}" "{(LauncherDir.Value / "fuMkJ3PJS.AppImage.desktop").ToPosix()}"
+                                Exec={Environment.CommandLine} {ExpectedAppImagePath.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
