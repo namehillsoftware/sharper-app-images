@@ -1,20 +1,15 @@
-using System.Diagnostics;
 using System.Text;
 using PathLib;
 using SharperIntegration.Extraction;
-using SharperIntegration.UI;
 
 namespace SharperIntegration.Registration;
 
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations,
-    IDialogControl dialogControl,
     IStartProcesses processes
 ) : IDesktopResourceManagement
 {
-    private const string RemovalQuestion = "Remove {0} from Desktop?";
-
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         var stagedIconPaths = GetStagedIconPaths(desktopResources).ToArray();
@@ -75,6 +70,40 @@ public class DesktopResourceManagement(
         var appImagePath = appImage.Path.FileInfo.FullName;
         entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         entry["TryExec"] = [appImagePath];
+
+        if (entry.TryGetValue("MimeType", out var mimeTypeValue) && appLocations.MimeConfigPath.Exists())
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+    
+            var appImageFileName = appImage.Path.Filename;
+            
+            var mimeTypes = mimeTypeValue.SingleOrDefault()?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+            if (mimeTypes.Length > 0)
+            {
+                var mimeTypesTable = await ParseDesktopEntry(appLocations.MimeConfigPath, cancellationToken);
+
+                var associatedMimeTypes = mimeTypesTable["Added Associations"];
+                foreach (var mimeType in mimeTypes)
+                {
+                    if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+                    var apps = new HashSet<string>();
+                    if (associatedMimeTypes.TryGetValue(mimeType, out var currentAppsValue))
+                    {
+                        var appsList = currentAppsValue.SingleOrDefault()?.Trim().Split(';', ';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+                        apps = [..appsList];
+                    }
+
+                    apps.Add(appImageFileName);
+                    associatedMimeTypes[mimeType] = [string.Join(';', apps)];
+                }
+
+                if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+                await WriteDesktopEntry(appLocations.MimeConfigPath, mimeTypesTable, cancellationToken);
+            }
+        }
 
         var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
         foreach (var (_, section) in actions)

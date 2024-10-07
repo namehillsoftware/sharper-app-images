@@ -1,11 +1,9 @@
-using System.Diagnostics;
 using FluentAssertions;
 using Machine.Specifications;
 using NSubstitute;
 using PathLib;
 using SharperIntegration.Extraction;
 using SharperIntegration.Registration;
-using SharperIntegration.UI;
 
 namespace SharperIntegration.Test;
 
@@ -19,9 +17,13 @@ public class TestDesktopResourceManagement
             private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> MimeConfigDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> MimeConfFile = new(() => MimeConfigDir.Value / "conf" / "mimetypes.conf");
 
-            private static readonly Lazy<string> ExpectedAppImagePath =
-                new(() => new CompatPath("zVzvCArxmK.appimage").FileInfo.FullName);
+            private const string AppImageName = "zVzvCArxmK.appimage";
+
+            private static readonly Lazy<string> ExpectedAppImageFileName =
+                new(() => new CompatPath(AppImageName).FileInfo.FullName);
             
             private static readonly Lazy<DesktopResourceManagement> DesktopAppRegistration = new(() =>
             {
@@ -32,14 +34,11 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
-                var dialogControl = Substitute.For<IDialogControl>();
-                dialogControl.GetYesNoDialogCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-                    .Returns(["YesNo", "lCfdW5HOmVL"]);
+                desktopAppLocations.MimeConfigPath.Returns(MimeConfFile.Value);
                 
                 return new DesktopResourceManagement(
                     extractionConfig,
                     desktopAppLocations,
-                    dialogControl,
                     Substitute.For<IStartProcesses>());
             });
 
@@ -60,6 +59,16 @@ public class TestDesktopResourceManagement
 
                 var rootIcon = StagingDir.Value / "big-dumb-icon.png";
                 await rootIcon.Touch();
+
+                MimeConfFile.Value.Parent().Mkdir(makeParents: true);
+                await MimeConfFile.Value.WriteText($"""
+                                           [Default Applications]
+                                           application/octet-stream=xed.desktop
+
+                                           [Added Associations]
+                                           application/octet-stream=xed.desktop;{AppImageName};ff.desktop
+                                           application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
+                                           """);
                 
                 await DesktopAppRegistration.Value.RegisterResources(
                     new AppImage
@@ -88,31 +97,31 @@ public class TestDesktopResourceManagement
                                 GenericName[de]=3D-Druck-Software
                                 Comment=Cura converts 3D models into paths for a 3D printer. It prepares your print for maximum accuracy, minimum printing time and good reliability with many extra features that make your print come out great.
                                 Comment[de]=Cura wandelt 3D-Modelle in Pfade für einen 3D-Drucker um. Es bereitet Ihren Druck für maximale Genauigkeit, minimale Druckzeit und guter Zuverlässigkeit mit vielen zusätzlichen Funktionen vor, damit Ihr Druck großartig wird.
-                                Exec={ExpectedAppImagePath.Value} %F
-                                TryExec={ExpectedAppImagePath.Value}
+                                Exec={ExpectedAppImageFileName.Value} %F
+                                TryExec={ExpectedAppImageFileName.Value}
                                 Icon=cura-icon
                                 Terminal=false
                                 Type=Application
-                                MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
+                                MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;application/octet-stream;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
                                 Actions=new-window;new-private-window;remove-app-image
                                 
                                 [Desktop Action new-window]
                                 Name=Open a New Window
-                                Exec={ExpectedAppImagePath.Value} %u
+                                Exec={ExpectedAppImageFileName.Value} %u
                                 
                                 [Desktop Action new-private-window]
                                 Name=Open a New Private Window
-                                Exec={ExpectedAppImagePath.Value} --private-window %u
+                                Exec={ExpectedAppImageFileName.Value} --private-window %u
                                 
                                 [Desktop Action profilemanager]
                                 Name=Open the Profile Manager
-                                Exec={ExpectedAppImagePath.Value} --ProfileManager %u
+                                Exec={ExpectedAppImageFileName.Value} --ProfileManager %u
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec={Environment.CommandLine} {ExpectedAppImagePath.Value} --remove
+                                Exec={Environment.CommandLine} {ExpectedAppImageFileName.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -123,11 +132,33 @@ public class TestDesktopResourceManagement
                     (IconsDir.Value / "scalable" / "mimetypes" / "app-x.svg").ToString(),
                     (IconsDir.Value / "big-dumb-icon.png").ToString());
 
+            private It then_registers_the_mime_types = () => MimeConfFile.Value
+                .ReadAsText()
+                .Trim()
+                .Should()
+                .BeEquivalentTo($"""
+                                [Default Applications]
+                                application/octet-stream=xed.desktop
+                                
+                                [Added Associations]
+                                application/octet-stream=xed.desktop;{AppImageName};ff.desktop
+                                application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
+                                application/sla={AppImageName}
+                                application/vnd.ms-3mfdocument={AppImageName}
+                                application/prs.wavefront-obj={AppImageName}
+                                image/bmp={AppImageName}
+                                image/gif={AppImageName}
+                                image/jpeg={AppImageName}
+                                image/png={AppImageName}
+                                model/x3d+xml={AppImageName}
+                                """);
+
             private Cleanup after = () =>
             {
                 if (IconsDir.IsValueCreated) ((IDisposable)IconsDir.Value).Dispose();
                 if (LauncherDir.IsValueCreated) ((IDisposable)LauncherDir.Value).Dispose();
                 if (StagingDir.IsValueCreated) ((IDisposable)StagingDir.Value).Dispose();
+                if (MimeConfigDir.IsValueCreated) ((IDisposable)MimeConfigDir.Value).Dispose();
             };
         }
         
@@ -152,7 +183,6 @@ public class TestDesktopResourceManagement
                 return new DesktopResourceManagement(
                     extractionConfig, 
                     desktopAppLocations,
-                    Substitute.For<IDialogControl>(),
                     Substitute.For<IStartProcesses>());
             });
 
@@ -299,7 +329,6 @@ public class TestDesktopResourceManagement
                     return new DesktopResourceManagement(
                         extractionConfig,
                         desktopAppLocations,
-                        Substitute.For<IDialogControl>(),
                         Substitute.For<IStartProcesses>());
                 });
 

@@ -1,16 +1,13 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using PathLib;
 using Serilog;
 using Serilog.Extensions.Logging;
 using SharperIntegration;
 using SharperIntegration.Access;
-using SharperIntegration.Verification;
 using SharperIntegration.Extraction;
 using SharperIntegration.Registration;
 using SharperIntegration.UI;
+using SharperIntegration.Verification;
 
 using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
@@ -28,6 +25,7 @@ var executionConfiguration = new ExecutionConfiguration
     StagingDirectory = tempDirectory,
     IconDirectory = new CompatPath("~/.local/share/icons"),
     DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
+    MimeConfigPath = new CompatPath("~/.config/mimeapps.list")
 };
 
 var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
@@ -60,7 +58,7 @@ var dialogControl = new DialogControl();
 var processStarter = new ProcessStarter();
 IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
     loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration, dialogControl,  processStarter));
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration,  processStarter));
 
 if (!args.Contains("--force"))
 {
@@ -90,5 +88,6 @@ namespace SharperIntegration
         public IPath StagingDirectory { get; init; } = CompatPath.Empty;
         public IPath IconDirectory { get; init; } = CompatPath.Empty;
         public IPath DesktopEntryDirectory { get; init; } = CompatPath.Empty;
+        public IPath MimeConfigPath { get; init; } = CompatPath.Empty;
     }
 }
