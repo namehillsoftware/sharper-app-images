@@ -123,7 +123,7 @@ public class TestDesktopResourceManagement
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec={Environment.CommandLine} {ExpectedAppImageFileName.Value} --remove
+                                Exec={Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()} {ExpectedAppImageFileName.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -254,7 +254,7 @@ public class TestDesktopResourceManagement
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec={Environment.CommandLine} {ExpectedAppImagePath.Value} --remove
+                                Exec={Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()} {ExpectedAppImagePath.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)

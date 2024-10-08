@@ -142,7 +142,7 @@ public class DesktopResourceManagement(
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
             ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = [Environment.CommandLine, appImagePath, "--remove"],
+            ["Exec"] = [Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First(), appImagePath, "--remove"],
         };
 
         const string removeAppImageAction = "remove-app-image";
