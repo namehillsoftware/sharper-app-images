@@ -15,6 +15,7 @@ public class TestDesktopResourceManagement
         public class when_registering_a_desktop_image
         {
             private const string AppImageName = "zVzvC;ArxmK.appimage";
+            private const string ExpectedMimeTypesEntry = "zVzvC\\;ArxmK.appimage.desktop";
             
             private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
@@ -42,7 +43,7 @@ public class TestDesktopResourceManagement
                                                 application/octet-stream=xed.desktop
 
                                                 [Added Associations]
-                                                application/octet-stream=xed.desktop;{AppImageName.Replace(";", "\\;")};ff.desktop
+                                                application/octet-stream=xed.desktop;{ExpectedMimeTypesEntry};ff.desktop
                                                 application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
                                                 """);
                 desktopAppLocations.MimeConfigPath.Returns(mimeConfigFile);
@@ -142,16 +143,16 @@ public class TestDesktopResourceManagement
                                 application/octet-stream=xed.desktop
                                 
                                 [Added Associations]
-                                application/octet-stream=xed.desktop;{AppImageName.Replace(";", "\\;")};ff.desktop
+                                application/octet-stream=xed.desktop;{ExpectedMimeTypesEntry};ff.desktop
                                 application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
-                                application/sla={AppImageName.Replace(";", "\\;")}
-                                application/vnd.ms-3mfdocument={AppImageName.Replace(";", "\\;")}
-                                application/prs.wavefront-obj={AppImageName.Replace(";", "\\;")}
-                                image/bmp={AppImageName.Replace(";", "\\;")}
-                                image/gif={AppImageName.Replace(";", "\\;")}
-                                image/jpeg={AppImageName.Replace(";", "\\;")}
-                                image/png={AppImageName.Replace(";", "\\;")}
-                                model/x3d+xml={AppImageName.Replace(";", "\\;")}
+                                application/sla={ExpectedMimeTypesEntry}
+                                application/vnd.ms-3mfdocument={ExpectedMimeTypesEntry}
+                                application/prs.wavefront-obj={ExpectedMimeTypesEntry}
+                                image/bmp={ExpectedMimeTypesEntry}
+                                image/gif={ExpectedMimeTypesEntry}
+                                image/jpeg={ExpectedMimeTypesEntry}
+                                image/png={ExpectedMimeTypesEntry}
+                                model/x3d+xml={ExpectedMimeTypesEntry}
                                 """);
 
             private Cleanup after = () =>
@@ -276,7 +277,8 @@ public class TestDesktopResourceManagement
             public class when_removing_the_resources
             {
                 private const string AppImageName = "xa6uxFIwo8e.AppImage";
-                
+                private const string MimeTypesEntry = "xa6uxFIwo8e.AppImage.desktop";
+
                 private static readonly AppImage _appImage = new()
                 {
                     Path = new CompatPath(AppImageName)
@@ -320,20 +322,7 @@ public class TestDesktopResourceManagement
                 
                 private static readonly Lazy<IPath> MimeConfigDir = new(() => new TempDirectory());
 
-                private static readonly Lazy<Task<IPath>> MimeConfFile = new(async () =>
-                {
-                    var file = MimeConfigDir.Value / "conf" / "mimetypes.conf";
-                    file.Parent().Mkdir(makeParents: true);
-                    await file.WriteText($"""
-                                          [Default Applications]
-                                          application/octet-stream=xed.desktop
-
-                                          [Added Associations]
-                                          application/octet-stream=xed.desktop;{AppImageName};ff.desktop
-                                          application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
-                                          """);
-                    return file;
-                });
+                private static readonly Lazy<IPath> MimeConfFile = new(() => MimeConfigDir.Value / "conf" / "mimetypes.conf");
                 
                 private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
 
@@ -345,6 +334,7 @@ public class TestDesktopResourceManagement
                     var desktopAppLocations = Substitute.For<IDesktopAppLocations>();
                     desktopAppLocations.DesktopEntryDirectory.Returns(await LauncherDir.Value);
                     desktopAppLocations.IconDirectory.Returns(await IconsDir.Value);
+                    desktopAppLocations.MimeConfigPath.Returns(MimeConfFile.Value);
 
                     return new DesktopResourceManagement(
                         extractionConfig,
@@ -368,6 +358,19 @@ public class TestDesktopResourceManagement
                         await path.Touch(existOk: true);
                         desktopIcons.Add(path);
                     }
+
+                    var file = MimeConfFile.Value;
+                    file.Parent().Mkdir(makeParents: true);
+                    await file.WriteText($"""
+                                          [Default Applications]
+                                          application/octet-stream=xed.desktop
+                                          image/png={MimeTypesEntry}
+                                          
+                                          [Added Associations]
+                                          application/octet-stream=xed.desktop;{MimeTypesEntry};ff.desktop
+                                          application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop;
+                                          image/png={MimeTypesEntry}
+                                          """);
                     
                     await (await DesktopAppRegistration.Value).RemoveResources(
                         _appImage,
@@ -383,6 +386,20 @@ public class TestDesktopResourceManagement
                 
                 private It has_an_empty_icons_dir = async () =>
                     (await IconsDir.Value).GetFiles("*").Should().BeEmpty();
+
+                private It unregisters_the_mime_types = async () =>
+                    MimeConfFile.Value.ReadAsText().Trim()
+                        .Should()
+                        .BeEquivalentTo("""
+                                        [Default Applications]
+                                        application/octet-stream=xed.desktop
+                                        image/png=
+                                        
+                                        [Added Associations]
+                                        application/octet-stream=xed.desktop;ff.desktop
+                                        application/vnd.appimage=Sharper_Integration-x86_64.AppImage.desktop
+                                        image/png=
+                                        """);
                 
                 private Cleanup after = () =>
                 {

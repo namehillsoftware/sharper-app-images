@@ -35,6 +35,29 @@ public class DesktopResourceManagement(
         }
 
         var stagedDesktopPath = GetStagedDesktopEntryPath(appImage);
+       
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var appImageFileName = stagedDesktopPath.Filename;
+        
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+        var mimeTypesTable = await ParseDesktopEntry(appLocations.MimeConfigPath, cancellationToken);
+
+        foreach (var associatedMimeTypes in mimeTypesTable.Values)
+        {
+            foreach (var (mimeType, value) in associatedMimeTypes)
+            {
+                if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+                
+                var appsList = ParseMultiValue(value.SingleOrDefault());
+                associatedMimeTypes[mimeType] =
+                    [WriteMultiValue(appsList.Where(a => a != appImageFileName).Distinct())];
+            }
+        }
+
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+        await WriteDesktopEntry(appLocations.MimeConfigPath, mimeTypesTable, cancellationToken);
+        
         if (stagedDesktopPath.Exists())
             stagedDesktopPath.Delete();
 
@@ -71,11 +94,13 @@ public class DesktopResourceManagement(
         entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         entry["TryExec"] = [appImagePath];
 
+        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
+
         if (entry.TryGetValue("MimeType", out var mimeTypeValue) && appLocations.MimeConfigPath.Exists())
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
     
-            var appImageFileName = appImage.Path.Filename;
+            var appImageFileName = newDesktopEntry.Filename;
             
             var mimeTypes = ParseMultiValue(mimeTypeValue.SingleOrDefault()).ToArray();
 
@@ -113,8 +138,6 @@ public class DesktopResourceManagement(
             exec = section[entryExecKey];
             section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         }
-        
-        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
         
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
