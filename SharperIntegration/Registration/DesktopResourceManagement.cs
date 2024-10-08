@@ -148,11 +148,13 @@ public class DesktopResourceManagement(
         const string removeAppImageAction = "remove-app-image";
         table[$"Desktop Action {removeAppImageAction}"] = newAction;
         
-        var declaredActions = new List<string> { removeAppImageAction };
+        var declaredActions = new List<string>();
         if (entry.TryGetValue("Actions", out var existingActions))
         {
             declaredActions.AddRange(ParseMultiValue(existingActions.SingleOrDefault()));
         }
+        
+        declaredActions.Add(removeAppImageAction);
         
         entry["Actions"] = [WriteMultiValue(declaredActions)];
 

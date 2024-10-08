@@ -107,7 +107,7 @@ public class TestDesktopResourceManagement
                                 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;application/octet-stream;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
-                                Actions=remove-app-image;new-window;new-private-window
+                                Actions=new-window;new-private-window;remove-app-image
                                 
                                 [Desktop Action new-window]
                                 Name=Open a New Window
@@ -238,7 +238,7 @@ public class TestDesktopResourceManagement
                                 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
-                                Actions=remove-app-image;Atligula;Euismodsuspendisse
+                                Actions=Atligula;Euismodsuspendisse;remove-app-image
                                 
                                 [Desktop Action Atligula]
                                 Name=Open a New Window
