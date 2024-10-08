@@ -77,7 +77,7 @@ public class DesktopResourceManagement(
     
             var appImageFileName = appImage.Path.Filename;
             
-            var mimeTypes = mimeTypeValue.SingleOrDefault()?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+            var mimeTypes = ParseMultiValue(mimeTypeValue.SingleOrDefault()).ToArray();
 
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
             if (mimeTypes.Length > 0)
@@ -92,12 +92,12 @@ public class DesktopResourceManagement(
                     var apps = new HashSet<string>();
                     if (associatedMimeTypes.TryGetValue(mimeType, out var currentAppsValue))
                     {
-                        var appsList = currentAppsValue.SingleOrDefault()?.Trim().Split(';', ';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+                        var appsList = ParseMultiValue(currentAppsValue.SingleOrDefault());
                         apps = [..appsList];
                     }
 
                     apps.Add(appImageFileName);
-                    associatedMimeTypes[mimeType] = [string.Join(';', apps)];
+                    associatedMimeTypes[mimeType] = [WriteMultiValue(apps)];
                 }
 
                 if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
@@ -125,18 +125,13 @@ public class DesktopResourceManagement(
         const string removeAppImageAction = "remove-app-image";
         table[$"Desktop Action {removeAppImageAction}"] = newAction;
         
-        var declaredActions = string.Empty;
+        var declaredActions = new List<string> { removeAppImageAction };
         if (entry.TryGetValue("Actions", out var existingActions))
         {
-            declaredActions = existingActions.SingleOrDefault()?.Trim() ?? string.Empty;
-            if (!string.IsNullOrEmpty(declaredActions) && !declaredActions.EndsWith(';'))
-            {
-                declaredActions += ";";
-            }
+            declaredActions.AddRange(ParseMultiValue(existingActions.SingleOrDefault()));
         }
-        declaredActions += removeAppImageAction;
         
-        entry["Actions"] = [declaredActions];
+        entry["Actions"] = [WriteMultiValue(declaredActions)];
 
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);   
     }
@@ -186,9 +181,6 @@ public class DesktopResourceManagement(
             {
                 if (c == '"')
                 {
-                    if (inBetweenQuotes)
-                        FinishSection();
-
                     inBetweenQuotes = !inBetweenQuotes;
                     continue;
                 }
@@ -237,6 +229,40 @@ public class DesktopResourceManagement(
         return processes.RunProcess("xdg-desktop-menu", ["forceupdate"], cancellationToken);
     }
 
+    private static IEnumerable<string> ParseMultiValue(string? value)
+    {
+        if (value is null) yield break;
+
+        var escapeNext = false;
+        var token = new StringBuilder();
+        foreach (var c in value)
+        {
+            if (escapeNext)
+            {
+                token.Append(c);
+                escapeNext = false;
+                continue;
+            }
+            
+            switch (c)
+            {
+                case '\\':
+                    escapeNext = true;
+                    continue;
+                case ';':
+                    yield return token.ToString();
+                    token.Clear();
+                    continue;
+                default:
+                    token.Append(c);
+                    continue;
+            }
+        }
+
+        if (token.Length > 0)
+            yield return token.ToString();
+    }
+
     private static async Task WriteDesktopEntry(
         IPath entry,
         Dictionary<string, Dictionary<string, IEnumerable<string>>> contents,
@@ -260,4 +286,7 @@ public class DesktopResourceManagement(
             await entryWriter.WriteLineAsync();
         }
     }
+
+    private static string WriteMultiValue(IEnumerable<string> values) => 
+        string.Join(';', values.Select(part => part.Replace(";", "\\;")));
 }
