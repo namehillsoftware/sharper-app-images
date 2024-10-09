@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using PathLib;
 using Serilog;
 using Serilog.Extensions.Logging;
@@ -61,11 +62,11 @@ IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagemen
 
 if (!args.Contains("--force"))
 {
-    var dialogControl = new DialogControl();
-    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, processStarter);
+    var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
+    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl);
 }
 
-if (args.Length > 1 && args[1] == "--remove")
+if (args.Contains("--remove"))
 {
     await desktopAppRegistration.RemoveResources(appImage, desktopResources, cancellationTokenSource.Token);
 }
@@ -80,6 +81,28 @@ return 0;
 
 void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEventArgs) => 
     cancellationTokenSource.Cancel();
+
+async Task<IUserInteraction> GetInteractionControls(CancellationToken cancellationToken = default)
+{
+    if (await CheckIfProgramExists("zenity", cancellationToken)) return new ZenityInteraction(processStarter);
+    if (await CheckIfProgramExists("kdialog", cancellationToken)) return new KDialogInteraction(processStarter);
+    return new ConsoleInteraction();
+}
+
+static async Task<bool> CheckIfProgramExists(string programName, CancellationToken cancellationToken = default)
+{   
+    var whichProcess = Process.Start(new ProcessStartInfo("which", programName)
+    {
+        RedirectStandardOutput = true,
+    });
+        
+    if (whichProcess is null) return false;
+        
+    await whichProcess.WaitForExitAsync(cancellationToken);
+        
+    var whichProcessOutput = await whichProcess.StandardOutput.ReadToEndAsync(cancellationToken);
+    return whichProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
+}
 
 namespace SharperIntegration
 {
