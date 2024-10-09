@@ -54,7 +54,6 @@ var appImageAccess = new LoggingAppImageExtractor(
 var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
-var dialogControl = new DialogControl();
 var processStarter = new ProcessStarter();
 IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
     loggerFactory.CreateLogger<LoggingResourceManagement>(),
@@ -62,6 +61,7 @@ IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagemen
 
 if (!args.Contains("--force"))
 {
+    var dialogControl = new DialogControl();
     desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, processStarter);
 }
 
