@@ -16,7 +16,7 @@ jobs:
       run: sh build.sh
       
     - name: Upload artifact
-      uses: actions/upload-artifact@v1.0.0
+      uses: actions/upload-artifact@v4
       with:
         # Artifact name
         name: Sharper_Integration-${{ matrix.ARCH }}.AppImage
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
       - name: Inspect directory after downloading artifacts
         run: ls -alFR
       - name: Create release and upload artifacts
