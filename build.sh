@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 rm -rf _out
 
 # Generate a random ID for the build, to be used for finding the build in the docker host.
