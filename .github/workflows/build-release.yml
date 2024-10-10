@@ -9,6 +9,10 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ARCH: [ 'x86_64' ]
 
     steps:
     - uses: actions/checkout@v1
@@ -19,7 +23,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         # Artifact name
-        name: Sharper_Integration-${{ matrix.ARCH }}.AppImage
+        name: Sharper_Integration-${{ matrix.ARCH }}.build
         path: _out/
 
   upload:
