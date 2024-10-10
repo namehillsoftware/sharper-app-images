@@ -6,7 +6,8 @@ namespace SharperIntegration.Registration;
 
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
-    IDesktopAppLocations appLocations
+    IDesktopAppLocations appLocations,
+    IStartProcesses processes
 ) : IDesktopResourceManagement
 {
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
@@ -19,64 +20,13 @@ public class DesktopResourceManagement(
             newIconPath.Parent().Mkdir(makeParents: true);
             icon.FileInfo.CopyTo(newIconPath.FileInfo.FullName, true);
         }
-
-        var desktopEntry = desktopResources.DesktopEntry;
-        if (desktopEntry == null) return;
-        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-
-        var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
-        var entry = table["Desktop Entry"];
-
-        const string entryExecKey = "Exec";
-        var exec = entry[entryExecKey];
-        var appImagePath = appImage.Path.FileInfo.FullName;
-        entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
-        entry["TryExec"] = [appImagePath];
-
-        var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
-        foreach (var (_, section) in actions)
-        {
-            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-
-            exec = section[entryExecKey];
-            section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
-        }
-
-        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
-
-        var newAction = new Dictionary<string, IEnumerable<string>>
-        {
-            ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = ["rm -f", ..stagedIconPaths.Select(t => $"\"{t.target.ToPosix()}\""), $"\"{newDesktopEntry.ToPosix()}\""],
-        };
-
-        const string removeAppImageAction = "remove-app-image";
-        table[$"Desktop Action {removeAppImageAction}"] = newAction;
         
-        var declaredActions = string.Empty;
-        if (entry.TryGetValue("Actions", out var existingActions))
-        {
-            declaredActions = existingActions.SingleOrDefault();
-            if (!string.IsNullOrWhiteSpace(declaredActions))
-            {
-                if (!declaredActions.EndsWith(';'))
-                {
-                    declaredActions += ";";
-                }
-            }
-            else
-            {
-                declaredActions = string.Empty;
-            }
-        }
-        declaredActions += removeAppImageAction;
+        await ModifyDesktopEntry(appImage, desktopResources, cancellationToken);
         
-        entry["Actions"] = [declaredActions];
-
-        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
+        await TriggerDesktopUpdates(cancellationToken);
     }
 
-    public Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
+    public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         foreach (var (_, icon) in GetStagedIconPaths(desktopResources))
         {
@@ -85,10 +35,33 @@ public class DesktopResourceManagement(
         }
 
         var stagedDesktopPath = GetStagedDesktopEntryPath(appImage);
+       
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var appImageFileName = stagedDesktopPath.Filename;
+        
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+        var mimeTypesTable = await ParseDesktopEntry(appLocations.MimeConfigPath, cancellationToken);
+
+        foreach (var associatedMimeTypes in mimeTypesTable.Values)
+        {
+            foreach (var (mimeType, value) in associatedMimeTypes)
+            {
+                if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+                
+                var appsList = ParseMultiValue(value.SingleOrDefault());
+                associatedMimeTypes[mimeType] =
+                    [WriteMultiValue(appsList.Where(a => a != appImageFileName).Distinct())];
+            }
+        }
+
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+        await WriteDesktopEntry(appLocations.MimeConfigPath, mimeTypesTable, cancellationToken);
+        
         if (stagedDesktopPath.Exists())
             stagedDesktopPath.Delete();
-        
-        return Task.CompletedTask;
+
+        await TriggerDesktopUpdates(cancellationToken);
     }
 
     private IEnumerable<(IPath source, IPath target)> GetStagedIconPaths(DesktopResources desktopResources)
@@ -104,6 +77,88 @@ public class DesktopResourceManagement(
 
             yield return (icon, newIconPath);
         }
+    }
+
+    private async Task ModifyDesktopEntry(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
+    {
+        var desktopEntry = desktopResources.DesktopEntry;
+        if (desktopEntry == null) return;
+        if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+        var table = await ParseDesktopEntry(desktopEntry, cancellationToken);
+        var entry = table["Desktop Entry"];
+
+        const string entryExecKey = "Exec";
+        var exec = entry[entryExecKey];
+        var appImagePath = appImage.Path.FileInfo.FullName;
+        entry[entryExecKey] = [appImagePath, ..exec.Skip(1)];
+        entry["TryExec"] = [appImagePath];
+
+        var newDesktopEntry = GetStagedDesktopEntryPath(appImage);
+
+        if (entry.TryGetValue("MimeType", out var mimeTypeValue) && appLocations.MimeConfigPath.Exists())
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+    
+            var appImageFileName = newDesktopEntry.Filename;
+            
+            var mimeTypes = ParseMultiValue(mimeTypeValue.SingleOrDefault()).ToArray();
+
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+            if (mimeTypes.Length > 0)
+            {
+                var mimeTypesTable = await ParseDesktopEntry(appLocations.MimeConfigPath, cancellationToken);
+
+                var associatedMimeTypes = mimeTypesTable["Added Associations"];
+                foreach (var mimeType in mimeTypes)
+                {
+                    if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+                    var apps = new HashSet<string>();
+                    if (associatedMimeTypes.TryGetValue(mimeType, out var currentAppsValue))
+                    {
+                        var appsList = ParseMultiValue(currentAppsValue.SingleOrDefault());
+                        apps = [..appsList];
+                    }
+
+                    apps.Add(appImageFileName);
+                    associatedMimeTypes[mimeType] = [WriteMultiValue(apps)];
+                }
+
+                if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+                await WriteDesktopEntry(appLocations.MimeConfigPath, mimeTypesTable, cancellationToken);
+            }
+        }
+
+        var actions = table.Where(kv => kv.Key.StartsWith("Desktop Action"));
+        foreach (var (_, section) in actions)
+        {
+            if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+            exec = section[entryExecKey];
+            section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
+        }
+        
+        var newAction = new Dictionary<string, IEnumerable<string>>
+        {
+            ["Name"] = ["Remove AppImage from Desktop"],
+            ["Exec"] = [Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First(), appImagePath, "--remove"],
+        };
+
+        const string removeAppImageAction = "remove-app-image";
+        table[$"Desktop Action {removeAppImageAction}"] = newAction;
+        
+        var declaredActions = new List<string>();
+        if (entry.TryGetValue("Actions", out var existingActions))
+        {
+            declaredActions.AddRange(ParseMultiValue(existingActions.SingleOrDefault()));
+        }
+        
+        declaredActions.Add(removeAppImageAction);
+        
+        entry["Actions"] = [WriteMultiValue(declaredActions)];
+
+        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);   
     }
 
     private IPath GetStagedDesktopEntryPath(AppImage appImage)
@@ -151,9 +206,6 @@ public class DesktopResourceManagement(
             {
                 if (c == '"')
                 {
-                    if (inBetweenQuotes)
-                        FinishSection();
-
                     inBetweenQuotes = !inBetweenQuotes;
                     continue;
                 }
@@ -197,6 +249,45 @@ public class DesktopResourceManagement(
         }
     }
 
+    private Task<int> TriggerDesktopUpdates(CancellationToken cancellationToken = default)
+    {
+        return processes.RunProcess("xdg-desktop-menu", ["forceupdate"], cancellationToken);
+    }
+
+    private static IEnumerable<string> ParseMultiValue(string? value)
+    {
+        if (value is null) yield break;
+
+        var escapeNext = false;
+        var token = new StringBuilder();
+        foreach (var c in value)
+        {
+            if (escapeNext)
+            {
+                token.Append(c);
+                escapeNext = false;
+                continue;
+            }
+            
+            switch (c)
+            {
+                case '\\':
+                    escapeNext = true;
+                    continue;
+                case ';':
+                    yield return token.ToString();
+                    token.Clear();
+                    continue;
+                default:
+                    token.Append(c);
+                    continue;
+            }
+        }
+
+        if (token.Length > 0)
+            yield return token.ToString();
+    }
+
     private static async Task WriteDesktopEntry(
         IPath entry,
         Dictionary<string, Dictionary<string, IEnumerable<string>>> contents,
@@ -220,4 +311,7 @@ public class DesktopResourceManagement(
             await entryWriter.WriteLineAsync();
         }
     }
+
+    private static string WriteMultiValue(IEnumerable<string> values) => 
+        string.Join(';', values.Select(part => part.Replace(";", "\\;")));
 }

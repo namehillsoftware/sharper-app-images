@@ -5,7 +5,15 @@ RUN apt-get update && apt-get install -y clang zlib1g-dev
 WORKDIR /src
 
 # Copy everything
+COPY SharperAppImages.sln .
+COPY SharperIntegration/SharperIntegration.csproj ./SharperIntegration/
+COPY SharperIntegration.Test/SharperIntegration.Test.csproj ./SharperIntegration.Test/
+
+RUN dotnet restore
+
 COPY . ./
+
+RUN dotnet test
 
 WORKDIR /src/SharperIntegration
 
