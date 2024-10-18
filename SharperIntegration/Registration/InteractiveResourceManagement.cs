@@ -17,6 +17,11 @@ public class InteractiveResourceManagement(IDesktopResourceManagement inner, IUs
             await inner.RegisterResources(appImage, desktopResources, cancellationToken);
     }
 
+    public Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         var promptResult = await userInteraction.PromptYesNo(

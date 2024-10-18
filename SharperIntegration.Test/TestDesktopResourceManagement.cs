@@ -23,6 +23,8 @@ public class TestDesktopResourceManagement
             private static readonly Lazy<IPath> MimeConfigDir = new(() => new TempDirectory());
 
             private static readonly Lazy<IPath> MimeConfFile = new(() => MimeConfigDir.Value / "conf" / "mimetypes.conf");
+            
+            private static readonly Lazy<IPath> ProgramPath = new(() => TestFixture.TestData / "program");
 
             private static readonly Lazy<string> ExpectedAppImageFileName =
                 new(() => new CompatPath(AppImageName).FileInfo.FullName);
@@ -48,9 +50,13 @@ public class TestDesktopResourceManagement
                                                 """);
                 desktopAppLocations.MimeConfigPath.Returns(mimeConfigFile);
                 
+                var programPaths = Substitute.For<IProgramPaths>();
+                programPaths.ProgramPath.Returns(ProgramPath.Value);
+                
                 return new DesktopResourceManagement(
                     extractionConfig,
                     desktopAppLocations,
+                    programPaths,
                     Substitute.For<IStartProcesses>());
             });
 
@@ -107,7 +113,7 @@ public class TestDesktopResourceManagement
                                 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;application/octet-stream;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
-                                Actions=new-window;new-private-window;remove-app-image
+                                Actions=new-window;new-private-window;update-app-image;remove-app-image
                                 
                                 [Desktop Action new-window]
                                 Name=Open a New Window
@@ -120,10 +126,14 @@ public class TestDesktopResourceManagement
                                 [Desktop Action profilemanager]
                                 Name=Open the Profile Manager
                                 Exec={ExpectedAppImageFileName.Value} --ProfileManager %u
+
+                                [Desktop Action update-app-image]
+                                Name=Update AppImage
+                                Exec={ProgramPath.Value} {ExpectedAppImageFileName.Value} --update
                                 
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec={Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()} {ExpectedAppImageFileName.Value} --remove
+                                Exec={ProgramPath.Value} {ExpectedAppImageFileName.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -164,11 +174,70 @@ public class TestDesktopResourceManagement
             };
         }
         
+        public class when_updating_a_desktop_image
+        {
+            private const string AppImageName = "vkvx5ojk";
+            
+            private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> MimeConfigDir = new(() => new TempDirectory());
+
+            private static string? _startedProgram;
+            private static string? _updatedProgram;
+            
+            private static readonly Lazy<DesktopResourceManagement> DesktopAppRegistration = new(() =>
+            {
+                var extractionConfig = Substitute.For<IAppImageExtractionConfiguration>();
+                
+                var desktopAppLocations = Substitute.For<IDesktopAppLocations>();
+
+                var processStarter = Substitute.For<IStartProcesses>();
+                processStarter
+                    .RunProcess(Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+                    .Returns(info =>
+                    {
+                        _startedProgram = info.Arg<string>();
+                        _updatedProgram = info.Arg<string[]>()[0];
+                        return 0;
+                    });
+                
+                var programPaths = Substitute.For<IProgramPaths>();
+                programPaths.ProgramPath.Returns(TestFixture.TestData / "fake-self");
+                
+                return new DesktopResourceManagement(
+                    extractionConfig, desktopAppLocations, programPaths, processStarter);
+            });
+
+            private Because of = async () =>
+            {
+                await DesktopAppRegistration.Value.UpdateImage(
+                    new AppImage
+                    {
+                        Path = new CompatPath(AppImageName)
+                    });
+            };
+
+            private It then_updates_using_the_appimagetool =
+                () => _startedProgram.Should().EndWith("appimageupdatetool-fake.AppImage");
+
+            private It then_updates_the_appimage = () => _updatedProgram.Should().EndWith(AppImageName);
+
+            private Cleanup after = () =>
+            {
+                if (IconsDir.IsValueCreated) ((IDisposable)IconsDir.Value).Dispose();
+                if (LauncherDir.IsValueCreated) ((IDisposable)LauncherDir.Value).Dispose();
+                if (StagingDir.IsValueCreated) ((IDisposable)StagingDir.Value).Dispose();
+                if (MimeConfigDir.IsValueCreated) ((IDisposable)MimeConfigDir.Value).Dispose();
+            };
+        }
+        
         public class when_registering_a_different_desktop_image
         {
             private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
             private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
+            private static readonly Lazy<IPath> ProgramPath = new(() => TestFixture.TestData / "nogram");
 
             private static readonly Lazy<string> ExpectedAppImagePath =
                 new(() => new CompatPath("fuMkJ3PJS.AppImage").FileInfo.FullName);
@@ -182,9 +251,13 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.DesktopEntryDirectory.Returns(LauncherDir.Value);
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
                 
+                var programPaths = Substitute.For<IProgramPaths>();
+                programPaths.ProgramPath.Returns(ProgramPath.Value);
+                
                 return new DesktopResourceManagement(
                     extractionConfig, 
                     desktopAppLocations,
+                    programPaths,
                     Substitute.For<IStartProcesses>());
             });
 
@@ -238,7 +311,7 @@ public class TestDesktopResourceManagement
                                 MimeType=application/sla;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;image/bmp;image/gif;image/jpeg;image/png;model/x3d+xml;
                                 Categories=Graphics;
                                 Keywords=3D;Printing;
-                                Actions=Atligula;Euismodsuspendisse;remove-app-image
+                                Actions=Atligula;Euismodsuspendisse;update-app-image;remove-app-image
                                 
                                 [Desktop Action Atligula]
                                 Name=Open a New Window
@@ -252,9 +325,13 @@ public class TestDesktopResourceManagement
                                 Name=Open the Profile Manager
                                 Exec={ExpectedAppImagePath.Value} --ProfileManager %u
                                 
+                                [Desktop Action update-app-image]
+                                Name=Update AppImage
+                                Exec={ProgramPath.Value} {ExpectedAppImagePath.Value} --update
+                                
                                 [Desktop Action remove-app-image]
                                 Name=Remove AppImage from Desktop
-                                Exec={Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()} {ExpectedAppImagePath.Value} --remove
+                                Exec={ProgramPath.Value} {ExpectedAppImagePath.Value} --remove
                                 """);
 
             private It then_installs_icons = () => IconsDir.Value.GetFiles("*", SearchOption.AllDirectories)
@@ -339,6 +416,7 @@ public class TestDesktopResourceManagement
                     return new DesktopResourceManagement(
                         extractionConfig,
                         desktopAppLocations,
+                        Substitute.For<IProgramPaths>(),
                         Substitute.For<IStartProcesses>());
                 });
 

@@ -1,13 +1,20 @@
-using System.Diagnostics;
+using CliWrap;
+using Microsoft.Extensions.Logging;
 
 namespace SharperIntegration;
 
-public class ProcessStarter : IStartProcesses
+public class ProcessStarter(ILogger<ProcessStarter> logger) : IStartProcesses
 {
     public async Task<int> RunProcess(string processName, string[] args, CancellationToken cancellationToken = default)
     {
-        var process = Process.Start(processName, args);
-        await process.WaitForExitAsync(cancellationToken);
-        return process.ExitCode;
+        using (logger.BeginScope(processName))
+        {
+            var command = Cli.Wrap(processName)
+                .WithArguments(args)
+                .WithStandardOutputPipe(PipeTarget.ToDelegate(line => logger.LogInformation(line)))
+                .WithStandardErrorPipe(PipeTarget.ToDelegate(line => logger.LogError(line)));
+            var commandResult = await command.ExecuteAsync(cancellationToken);
+            return commandResult.ExitCode;
+        }
     }
 }

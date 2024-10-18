@@ -7,6 +7,7 @@ namespace SharperIntegration.Registration;
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations,
+    IProgramPaths programPaths,
     IStartProcesses processes
 ) : IDesktopResourceManagement
 {
@@ -24,6 +25,19 @@ public class DesktopResourceManagement(
         await ModifyDesktopEntry(appImage, desktopResources, cancellationToken);
         
         await TriggerDesktopUpdates(cancellationToken);
+    }
+
+    public async Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
+    {
+        var workingDirectory = programPaths.ProgramPath.Parent();
+        var appImageToolPath = workingDirectory.GetFiles("appimageupdatetool-*.AppImage").FirstOrDefault();
+        if (appImageToolPath != null)
+        {
+            await processes.RunProcess(
+                appImageToolPath.FullPath(),
+                [appImage.Path.FullPath()],
+                cancellationToken);
+        }
     }
 
     public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
@@ -141,8 +155,17 @@ public class DesktopResourceManagement(
         
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
+            ["Name"] = ["Update AppImage"],
+            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--update"],
+        };
+
+        const string updateAppImageAction = "update-app-image";
+        table[$"Desktop Action {updateAppImageAction}"] = newAction;
+        
+        newAction = new Dictionary<string, IEnumerable<string>>
+        {
             ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = [Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First(), appImagePath, "--remove"],
+            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--remove"],
         };
 
         const string removeAppImageAction = "remove-app-image";
@@ -153,9 +176,10 @@ public class DesktopResourceManagement(
         {
             declaredActions.AddRange(ParseMultiValue(existingActions.SingleOrDefault()));
         }
-        
+
+        declaredActions.Add(updateAppImageAction);
         declaredActions.Add(removeAppImageAction);
-        
+
         entry["Actions"] = [WriteMultiValue(declaredActions)];
 
         await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);   

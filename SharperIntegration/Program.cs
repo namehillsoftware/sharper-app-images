@@ -24,9 +24,6 @@ using var tempDirectory = new TempDirectory();
 var executionConfiguration = new ExecutionConfiguration
 {
     StagingDirectory = tempDirectory,
-    IconDirectory = new CompatPath("~/.local/share/icons"),
-    DesktopEntryDirectory = new CompatPath("~/.local/share/applications"),
-    MimeConfigPath = new CompatPath("~/.config/mimeapps.list")
 };
 
 var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
@@ -55,12 +52,12 @@ var appImageAccess = new LoggingAppImageExtractor(
 var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
 
-var processStarter = new ProcessStarter();
+var processStarter = new ProcessStarter(loggerFactory.CreateLogger<ProcessStarter>());
 IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
     loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration,  processStarter));
+    new DesktopResourceManagement(executionConfiguration, executionConfiguration, executionConfiguration, processStarter));
 
-if (!args.Contains("--force"))
+if (!args.Contains("--non-interactive"))
 {
     var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
     desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl);
@@ -69,6 +66,10 @@ if (!args.Contains("--force"))
 if (args.Contains("--remove"))
 {
     await desktopAppRegistration.RemoveResources(appImage, desktopResources, cancellationTokenSource.Token);
+}
+else if (args.Contains("--update"))
+{
+    await desktopAppRegistration.UpdateImage(appImage, cancellationTokenSource.Token);
 }
 else
 {
@@ -106,11 +107,18 @@ static async Task<bool> CheckIfProgramExists(string programName, CancellationTok
 
 namespace SharperIntegration
 {
-    internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations
+    internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations, IProgramPaths
     {
+        private readonly Lazy<IPath> _lazyIconDirectory = new(() => new CompatPath("~/.local/share/icons"));
+        private readonly Lazy<IPath> _lazyDesktopEntryDirectory = new(() => new CompatPath("~/.local/share/applications"));
+        private readonly Lazy<IPath> _lazyMimeConfigPath = new(() => new CompatPath("~/.config/mimeapps.list"));
+        private readonly Lazy<IPath> _lazyProgramPath = new(() =>
+            new CompatPath(Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()));
+        
         public IPath StagingDirectory { get; init; } = CompatPath.Empty;
-        public IPath IconDirectory { get; init; } = CompatPath.Empty;
-        public IPath DesktopEntryDirectory { get; init; } = CompatPath.Empty;
-        public IPath MimeConfigPath { get; init; } = CompatPath.Empty;
+        public IPath IconDirectory => _lazyIconDirectory.Value;
+        public IPath DesktopEntryDirectory => _lazyDesktopEntryDirectory.Value;
+        public IPath MimeConfigPath => _lazyMimeConfigPath.Value;
+        public IPath ProgramPath => _lazyProgramPath.Value;
     }
 }

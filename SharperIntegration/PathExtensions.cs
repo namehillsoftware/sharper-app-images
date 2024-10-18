@@ -20,4 +20,6 @@ public static class PathExtensions
 
     public static void CopyTo(this IPath path, IPath destination, bool overwrite = false) =>
         path.FileInfo.CopyTo(destination.FileInfo.FullName, overwrite);
+
+    public static string FullPath(this IPath path) => path.ToString()!;
 }
