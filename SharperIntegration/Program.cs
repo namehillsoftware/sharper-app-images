@@ -60,7 +60,7 @@ IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagemen
 if (!args.Contains("--non-interactive"))
 {
     var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
-    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl);
+    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, executionConfiguration, processStarter);
 }
 
 if (args.Contains("--remove"))

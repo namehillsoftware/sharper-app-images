@@ -177,11 +177,6 @@ public class TestDesktopResourceManagement
         public class when_updating_a_desktop_image
         {
             private const string AppImageName = "vkvx5ojk";
-            
-            private static readonly Lazy<IPath> IconsDir = new(() => new TempDirectory());
-            private static readonly Lazy<IPath> LauncherDir = new(() => new TempDirectory());
-            private static readonly Lazy<IPath> StagingDir = new(() => new TempDirectory());
-            private static readonly Lazy<IPath> MimeConfigDir = new(() => new TempDirectory());
 
             private static string? _startedProgram;
             private static string? _updatedProgram;
@@ -222,14 +217,6 @@ public class TestDesktopResourceManagement
                 () => _startedProgram.Should().EndWith("appimageupdatetool-fake.AppImage");
 
             private It then_updates_the_appimage = () => _updatedProgram.Should().EndWith(AppImageName);
-
-            private Cleanup after = () =>
-            {
-                if (IconsDir.IsValueCreated) ((IDisposable)IconsDir.Value).Dispose();
-                if (LauncherDir.IsValueCreated) ((IDisposable)LauncherDir.Value).Dispose();
-                if (StagingDir.IsValueCreated) ((IDisposable)StagingDir.Value).Dispose();
-                if (MimeConfigDir.IsValueCreated) ((IDisposable)MimeConfigDir.Value).Dispose();
-            };
         }
         
         public class when_registering_a_different_desktop_image
