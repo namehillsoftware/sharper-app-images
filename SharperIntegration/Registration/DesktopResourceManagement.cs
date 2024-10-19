@@ -7,6 +7,7 @@ namespace SharperIntegration.Registration;
 public class DesktopResourceManagement(
     IAppImageExtractionConfiguration appImageExtractionConfiguration,
     IDesktopAppLocations appLocations,
+    IProgramPaths programPaths,
     IStartProcesses processes
 ) : IDesktopResourceManagement
 {
@@ -20,10 +21,23 @@ public class DesktopResourceManagement(
             newIconPath.Parent().Mkdir(makeParents: true);
             icon.FileInfo.CopyTo(newIconPath.FileInfo.FullName, true);
         }
-        
+
         await ModifyDesktopEntry(appImage, desktopResources, cancellationToken);
-        
+
         await TriggerDesktopUpdates(cancellationToken);
+    }
+
+    public async Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
+    {
+        var workingDirectory = programPaths.ProgramPath.Parent();
+        var appImageToolPath = workingDirectory.GetFiles("appimageupdatetool-*.AppImage").FirstOrDefault();
+        if (appImageToolPath != null)
+        {
+            await processes.RunProcess(
+                appImageToolPath.FullPath(),
+                [appImage.Path.FullPath()],
+                cancellationToken);
+        }
     }
 
     public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
@@ -35,11 +49,11 @@ public class DesktopResourceManagement(
         }
 
         var stagedDesktopPath = GetStagedDesktopEntryPath(appImage);
-       
+
         if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
         var appImageFileName = stagedDesktopPath.Filename;
-        
+
         if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
         var mimeTypesTable = await ParseDesktopEntry(appLocations.MimeConfigPath, cancellationToken);
 
@@ -48,7 +62,7 @@ public class DesktopResourceManagement(
             foreach (var (mimeType, value) in associatedMimeTypes)
             {
                 if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-                
+
                 var appsList = ParseMultiValue(value.SingleOrDefault());
                 associatedMimeTypes[mimeType] =
                     [WriteMultiValue(appsList.Where(a => a != appImageFileName).Distinct())];
@@ -57,7 +71,7 @@ public class DesktopResourceManagement(
 
         if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
         await WriteDesktopEntry(appLocations.MimeConfigPath, mimeTypesTable, cancellationToken);
-        
+
         if (stagedDesktopPath.Exists())
             stagedDesktopPath.Delete();
 
@@ -99,9 +113,9 @@ public class DesktopResourceManagement(
         if (entry.TryGetValue("MimeType", out var mimeTypeValue) && appLocations.MimeConfigPath.Exists())
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-    
+
             var appImageFileName = newDesktopEntry.Filename;
-            
+
             var mimeTypes = ParseMultiValue(mimeTypeValue.SingleOrDefault()).ToArray();
 
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
@@ -138,27 +152,37 @@ public class DesktopResourceManagement(
             exec = section[entryExecKey];
             section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         }
-        
+
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
+            ["Name"] = ["Update AppImage"],
+            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--update"],
+        };
+
+        const string updateAppImageAction = "update-app-image";
+        table[$"Desktop Action {updateAppImageAction}"] = newAction;
+
+        newAction = new Dictionary<string, IEnumerable<string>>
+        {
             ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = [Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First(), appImagePath, "--remove"],
+            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--remove"],
         };
 
         const string removeAppImageAction = "remove-app-image";
         table[$"Desktop Action {removeAppImageAction}"] = newAction;
-        
+
         var declaredActions = new List<string>();
         if (entry.TryGetValue("Actions", out var existingActions))
         {
             declaredActions.AddRange(ParseMultiValue(existingActions.SingleOrDefault()));
         }
-        
+
+        declaredActions.Add(updateAppImageAction);
         declaredActions.Add(removeAppImageAction);
-        
+
         entry["Actions"] = [WriteMultiValue(declaredActions)];
 
-        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);   
+        await WriteDesktopEntry(newDesktopEntry, table, cancellationToken);
     }
 
     private IPath GetStagedDesktopEntryPath(AppImage appImage)
@@ -176,7 +200,7 @@ public class DesktopResourceManagement(
         while ((line = await entryReader.ReadLineAsync(cancellationToken)) != null)
         {
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
-            
+
             var trimmedLine = line.Trim();
             if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith('#')) continue;
 
@@ -268,7 +292,7 @@ public class DesktopResourceManagement(
                 escapeNext = false;
                 continue;
             }
-            
+
             switch (c)
             {
                 case '\\':
@@ -310,8 +334,13 @@ public class DesktopResourceManagement(
 
             await entryWriter.WriteLineAsync();
         }
+
+        if (OperatingSystem.IsLinux())
+        {
+	        entry.FileInfo.UnixFileMode |= UnixFileMode.UserExecute;
+        }
     }
 
-    private static string WriteMultiValue(IEnumerable<string> values) => 
+    private static string WriteMultiValue(IEnumerable<string> values) =>
         string.Join(';', values.Select(part => part.Replace(";", "\\;")));
 }

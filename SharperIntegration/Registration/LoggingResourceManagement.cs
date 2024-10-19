@@ -11,6 +11,13 @@ public class LoggingResourceManagement(ILogger<IDesktopResourceManagement> logge
         logger.LogInformation("Resources registered for {appImage}.", appImage.Path);
     }
 
+    public async Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Updating {appImage}...", appImage.Path);
+        await inner.UpdateImage(appImage, cancellationToken);
+        logger.LogInformation("{appImage} updated.", appImage.Path);
+    }
+
     public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Removing resources from {appImage}...", appImage.Path);

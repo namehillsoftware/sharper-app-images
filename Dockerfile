@@ -19,7 +19,7 @@ WORKDIR /src/SharperIntegration
 
 # Restore as distinct layers
 RUN dotnet restore -r linux-x64
- 
+
 RUN dotnet publish \
     --no-restore \
     --self-contained true \
@@ -33,11 +33,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends wget ca-certificates fuse file -y && \
-#    apt-get install --no-install-recommends wget ca-certificates fuse binutils coreutils desktop-file-utils fakeroot patchelf squashfs-tools strace zsync file -y && \
+    apt-get install --no-install-recommends wget ca-certificates fuse file gpg -y && \
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool && \
-    chmod +x appimagetool #&& 
-#    mv ./appimagetool /usr/local/bin/appimagetool
+    chmod +x appimagetool #&&
 
 COPY --from=build /out/SharperIntegration /AppDir/AppRun
 COPY --from=build /src/AppImage /AppDir/
@@ -45,4 +43,3 @@ COPY --from=build /src/AppImage /AppDir/
 WORKDIR /out
 
 ENTRYPOINT ["/appimagetool", "/AppDir"]
-#RUN #ls && ./appimagetool /AppDir

@@ -11,7 +11,7 @@ echo "Build ID: ${BUILD_ID}"
 docker buildx build --tag "${BUILD_ID}" . && docker run --name "${BUILD_ID}" --privileged "${BUILD_ID}"
 
 EXIT_CODE=$?
- 	
+
 BUILD_CONTAINER=${BUILD_ID}
 
 docker container cp "${BUILD_CONTAINER}":/out ./_out

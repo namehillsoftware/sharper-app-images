@@ -29,5 +29,8 @@
         <None Update="TestData\TweakedCura.desktop">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None Update="TestData\appimageupdatetool-fake.AppImage">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 </Project>
