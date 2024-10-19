@@ -30,6 +30,9 @@ Download SharperIntegration from [here](https://github.com/namehillsoftware/shar
 - [XDG Desktop Entry Specification](https://xdg.pages.freedesktop.org/xdg-specs/desktop-entry-spec/latest/index.html#introduction)
 - [AppImageKit](https://github.com/AppImage/AppImageKit)
 - [Awesome AppImage](https://github.com/AppImageCommunity/awesome-appimage?tab=readme-ov-file)
+- Numerous wonderful C# packages:
+  - [SharperIntegration](./SharperIntegration/SharperIntegration.csproj)
+  - [SharperIntegration.Test](./SharperIntegration.Test/SharperIntegration.Test.csproj)
 
 # Alternatives
 
