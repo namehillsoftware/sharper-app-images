@@ -8,4 +8,7 @@ public class ConsoleInteraction : IUserInteraction
         var result = Console.ReadKey();
         return Task.FromResult(result.Key == ConsoleKey.Y);
     }
+
+    public Task<bool> DisplayIndeterminateProgress(string title, string information,
+	    CancellationToken cancellationToken = default) => Task.FromResult(true);
 }

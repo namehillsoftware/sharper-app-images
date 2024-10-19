@@ -60,7 +60,8 @@ IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagemen
 if (!args.Contains("--non-interactive"))
 {
     var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
-    desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, executionConfiguration, processStarter);
+    if (dialogControl != null)
+		desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, executionConfiguration, processStarter);
 }
 
 if (args.Contains("--remove"))
@@ -80,27 +81,27 @@ Console.CancelKeyPress -= OnConsoleOnCancelKeyPress;
 
 return 0;
 
-void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEventArgs) => 
+void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEventArgs) =>
     cancellationTokenSource.Cancel();
 
-async Task<IUserInteraction> GetInteractionControls(CancellationToken cancellationToken = default)
+async Task<IUserInteraction?> GetInteractionControls(CancellationToken cancellationToken = default)
 {
     if (await CheckIfProgramExists("zenity", cancellationToken)) return new ZenityInteraction(processStarter);
     if (await CheckIfProgramExists("kdialog", cancellationToken)) return new KDialogInteraction(processStarter);
-    return new ConsoleInteraction();
+    return Console.WindowHeight > 0 ? new ConsoleInteraction() : null;
 }
 
 static async Task<bool> CheckIfProgramExists(string programName, CancellationToken cancellationToken = default)
-{   
+{
     var whichProcess = Process.Start(new ProcessStartInfo("which", programName)
     {
         RedirectStandardOutput = true,
     });
-        
+
     if (whichProcess is null) return false;
-        
+
     await whichProcess.WaitForExitAsync(cancellationToken);
-        
+
     var whichProcessOutput = await whichProcess.StandardOutput.ReadToEndAsync(cancellationToken);
     return whichProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
 }
@@ -114,7 +115,7 @@ namespace SharperIntegration
         private readonly Lazy<IPath> _lazyMimeConfigPath = new(() => new CompatPath("~/.config/mimeapps.list"));
         private readonly Lazy<IPath> _lazyProgramPath = new(() =>
             new CompatPath(Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()));
-        
+
         public IPath StagingDirectory { get; init; } = CompatPath.Empty;
         public IPath IconDirectory => _lazyIconDirectory.Value;
         public IPath DesktopEntryDirectory => _lazyDesktopEntryDirectory.Value;
