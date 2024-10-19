@@ -1,5 +1,7 @@
 # Sharper Integration
 
+<img src="./AppImage/sharper-integration.svg" width="300" alt="Sharper Integration Logo" title="Sharper Integration Logo" />
+
 Sharper Integration is an AppImage desktop integration program primarily written in C#.
 
 Its features include:
