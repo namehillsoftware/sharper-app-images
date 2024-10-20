@@ -12,7 +12,7 @@ public class MountedAppImageExtractor(
     public async Task<DesktopResources?> ExtractDesktopResources(AppImage appImage, CancellationToken cancellationToken = default)
     {
         var (mountProcess, mountedImagePath) = await GetMountedImage(appImage, cancellationToken);
-        
+
         if (mountProcess == null) return null;
 
         using (mountProcess)
@@ -24,7 +24,7 @@ public class MountedAppImageExtractor(
                     using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     linkedCancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
                     await mountProcess.WaitForExitAsync(linkedCancellationTokenSource.Token);
-                    
+
                     var exitCode = mountProcess.ExitCode;
                     if (exitCode != 0)
                     {
@@ -36,7 +36,7 @@ public class MountedAppImageExtractor(
 
                     return null;
                 }
-                
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
@@ -64,7 +64,7 @@ public class MountedAppImageExtractor(
             finally
             {
                 mountProcess.Kill(true);
-                
+
                 await mountProcess.WaitForExitAsync(cancellationToken);
             }
         }
@@ -87,7 +87,7 @@ public class MountedAppImageExtractor(
     private static async Task<(Process?, IPath?)> GetMountedImage(AppImage appImage,
         CancellationToken cancellationToken = default)
     {
-        var process = Process.Start(new ProcessStartInfo(appImage.Path.FileInfo.FullName, ["--appimage-mount"])
+        var process = Process.Start(new ProcessStartInfo(appImage.Path.FileInfo.FullName, "--appimage-mount")
         {
             UseShellExecute = false,
             RedirectStandardError = true,
@@ -95,7 +95,7 @@ public class MountedAppImageExtractor(
             RedirectStandardInput = true,
             StandardOutputEncoding = Encoding.UTF8,
         });
-        
+
         if (process == null) return (null, null);
 
         var mountProcess = Process.Start(
@@ -104,7 +104,7 @@ public class MountedAppImageExtractor(
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             });
-        
+
         var mountOutput = await (mountProcess?.StandardOutput.ReadToEndAsync(cancellationToken) ?? Task.FromResult(""));
         await (mountProcess?.WaitForExitAsync(cancellationToken) ?? Task.CompletedTask);
         var mountStrings = mountOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -132,7 +132,7 @@ public class MountedAppImageExtractor(
             if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
             if (tmpFile.IsSymlink()) continue;
-            
+
             var relativePath = tmpFile.RelativeTo(mountPath);
             var stagingPath = stagingDirectory / relativePath;
             stagingPath.Parent().Mkdir(makeParents: true);

@@ -48,7 +48,7 @@ public class InteractiveResourceManagement(
         var updateTask = inner.UpdateImage(appImage, linkedCancellationTokenSource.Token);
 
         await Task.WhenAny(progressDisplay, updateTask);
-        await linkedCancellationTokenSource.CancelAsync();
+        linkedCancellationTokenSource.Cancel();
 
         await Task.WhenAll(progressDisplay, updateTask);
     }

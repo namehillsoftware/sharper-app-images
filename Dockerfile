@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0@sha256:35792ea4ad1db051981f62b313f1be3b46b1f45cadbaa3c288cd0d3056eefb83 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 
 RUN apt-get update && apt-get install -y clang zlib1g-dev
 
@@ -33,7 +33,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends wget ca-certificates fuse file gpg -y && \
+    apt-get install --no-install-recommends wget ca-certificates fuse file gpg appstream desktop-file-utils -y && \
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool && \
     chmod +x appimagetool #&&
 

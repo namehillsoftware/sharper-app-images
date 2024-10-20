@@ -32,6 +32,7 @@ Download SharperIntegration from [here](https://github.com/namehillsoftware/shar
 - [XDG Desktop Entry Specification](https://xdg.pages.freedesktop.org/xdg-specs/desktop-entry-spec/latest/index.html#introduction)
 - [AppImageKit](https://github.com/AppImage/AppImageKit)
 - [Awesome AppImage](https://github.com/AppImageCommunity/awesome-appimage?tab=readme-ov-file)
+- Dialogs are displayed using either [Zenity](https://help.gnome.org/users/zenity/stable/) or [KDialog](https://develop.kde.org/docs/administration/kdialog/)
 - Numerous wonderful C# packages:
   - [SharperIntegration](./SharperIntegration/SharperIntegration.csproj)
   - [SharperIntegration.Test](./SharperIntegration.Test/SharperIntegration.Test.csproj)
