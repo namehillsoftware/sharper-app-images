@@ -2,11 +2,11 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
+			<LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PublishReadyToRun>True</PublishReadyToRun>
-<!--        <PublishSingleFile>True</PublishSingleFile>-->
         <PublishAot>True</PublishAot>
         <PublishTrimmed>True</PublishTrimmed>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

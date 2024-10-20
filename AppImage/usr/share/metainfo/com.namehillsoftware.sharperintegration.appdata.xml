@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+	<id>com.namehillsoftware.sharperintegration</id>
+
+	<name>Sharper Integration</name>
+	<summary>Sharper Integration is an AppImage desktop integration program</summary>
+
+	<metadata_license>CC-BY-SA-4.0</metadata_license>
+	<project_license>LGPL-3.0-only</project_license>
+
+	<description>
+		<p>
+			Sharper Integration is an AppImage desktop integration program. Its features include:
+		</p>
+		<ul>
+			<li>Extracts and integrates the desktop icon and desktop file from the AppImage and integrates them with the desktop.</li>
+			<li>Registers App Images with their associated mime-types.</li>
+			<li>Upon installation of itself, associates itself with the AppImage mime-type.</li>
+			<li>Adds options to undo desktop integration and to update the AppImage from the menu (using AppImageUpdate or appimageupdatetool if present in the same directory as SharperIntegration).</li>
+		</ul>
+	</description>
+
+	<launchable type="desktop-id">com.namehillsoftware.sharperintegration.desktop</launchable>
+</component>
