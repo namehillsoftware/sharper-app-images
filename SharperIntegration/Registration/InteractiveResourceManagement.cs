@@ -28,7 +28,8 @@ public class InteractiveResourceManagement(
         var promptResult = await userInteraction.PromptYesNo(question, cancellationToken);
         if (!promptResult) return;
 
-        var workingDirectory = programPaths.ProgramPath.Parent();
+        var programPath = await programPaths.GetProgramPathAsync(cancellationToken);
+        var workingDirectory = programPath.Parent();
         var appImageToolPath = workingDirectory.GetFiles("AppImageUpdate-*.AppImage").FirstOrDefault();
         if (appImageToolPath != null)
         {

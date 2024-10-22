@@ -29,7 +29,8 @@ public class DesktopResourceManagement(
 
     public async Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
     {
-        var workingDirectory = programPaths.ProgramPath.Parent();
+	    var programPath = await programPaths.GetProgramPathAsync(cancellationToken);
+        var workingDirectory = programPath.Parent();
         var appImageToolPath = workingDirectory.GetFiles("appimageupdatetool-*.AppImage").FirstOrDefault();
         if (appImageToolPath != null)
         {
@@ -153,10 +154,11 @@ public class DesktopResourceManagement(
             section[entryExecKey] = [appImagePath, ..exec.Skip(1)];
         }
 
+		var programPath = await programPaths.GetProgramPathAsync(cancellationToken);
         var newAction = new Dictionary<string, IEnumerable<string>>
         {
             ["Name"] = ["Update AppImage"],
-            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--update"],
+            ["Exec"] = [programPath.FullPath(), appImagePath, "--update"],
         };
 
         const string updateAppImageAction = "update-app-image";
@@ -165,7 +167,7 @@ public class DesktopResourceManagement(
         newAction = new Dictionary<string, IEnumerable<string>>
         {
             ["Name"] = ["Remove AppImage from Desktop"],
-            ["Exec"] = [programPaths.ProgramPath.FullPath(), appImagePath, "--remove"],
+            ["Exec"] = [programPath.FullPath(), appImagePath, "--remove"],
         };
 
         const string removeAppImageAction = "remove-app-image";
