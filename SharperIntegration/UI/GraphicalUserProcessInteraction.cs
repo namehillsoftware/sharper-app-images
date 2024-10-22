@@ -24,7 +24,18 @@ public abstract class GraphicalUserProcessInteraction(IStartProcesses processes)
 	    return false;
     }
 
+    public async Task DisplayWarning(string title, string information, CancellationToken cancellationToken = default)
+    {
+	    var (dialogCommand, arguments) = GetIndeterminateProgressCommand(title, information);
+	    if (!string.IsNullOrEmpty(dialogCommand))
+	    {
+		    await processes.RunProcess(dialogCommand, arguments, cancellationToken);
+	    }
+    }
+
     protected abstract (string, string[]) GetYesNoDialogCommand(string title, string question);
 
     protected abstract (string, string[]) GetIndeterminateProgressCommand(string title, string information);
+
+    protected abstract (string, string[]) GetWarningDialogCommand(string title, string information);
 }

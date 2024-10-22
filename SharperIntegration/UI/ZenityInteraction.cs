@@ -18,4 +18,12 @@ public class ZenityInteraction(IStartProcesses processes) : GraphicalUserProcess
 		    $"--title={title}",
 		    $"--text={information}",
 	    ]);
+
+    protected override (string, string[]) GetWarningDialogCommand(string title, string information) =>
+	    ("zenity",
+	    [
+		    "--warning",
+		    $"--title={title}",
+		    $"--text={information}",
+	    ]);
 }

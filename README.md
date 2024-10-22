@@ -13,7 +13,7 @@ Its features include:
 
 ## Try it out
 
-Download SharperIntegration from [here](https://github.com/namehillsoftware/sharper-app-images/releases) and [make it executable](https://discourse.appimage.org/t/how-to-make-an-appimage-executable/).
+Download SharperIntegration from [here](https://github.com/namehillsoftware/sharper-app-images/releases) and [make it executable](https://discourse.appimage.org/t/how-to-make-an-appimage-executable/). Then execute the AppImage, it should prompt you to install itself.
 
 ## Motivation
 
