@@ -1,27 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net7.0</TargetFramework>
-			<LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <PublishReadyToRun>True</PublishReadyToRun>
-        <PublishAot>True</PublishAot>
-        <PublishTrimmed>True</PublishTrimmed>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PublishReadyToRun>True</PublishReadyToRun>
+		<PublishAot>True</PublishAot>
+		<PublishTrimmed>True</PublishTrimmed>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="BinaryTools.Elf" Version="0.3.0" />
-        <PackageReference Include="LTRData.DiscUtils.Iso9660" Version="1.0.47" />
-        <PackageReference Include="LTRData.DiscUtils.SquashFs" Version="1.0.47" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1"/>
-        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0"/>
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
-        <PackageReference Include="PathLib" Version="0.9.8" />
-        <PackageReference Include="SharpCompress" Version="0.38.0" />
-        <PackageReference Include="CliWrap" Version="3.6.6" />
-    </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="BinaryTools.Elf" Version="0.3.0"/>
+		<PackageReference Include="LTRData.DiscUtils.Iso9660" Version="1.0.47"/>
+		<PackageReference Include="LTRData.DiscUtils.SquashFs" Version="1.0.47"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1"/>
+		<PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0"/>
+		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+		<PackageReference Include="PathLib" Version="0.9.8"/>
+		<PackageReference Include="SharpCompress" Version="0.38.0"/>
+		<PackageReference Include="CliWrap" Version="3.6.6"/>
+	</ItemGroup>
 
 </Project>
