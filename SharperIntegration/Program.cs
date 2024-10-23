@@ -27,7 +27,7 @@ try
 {
 	using var tempDirectory = new TempDirectory();
 
-	var executionConfiguration = new ExecutionConfiguration(new AppImageChecker())
+	var executionConfiguration = new ExecutionConfiguration
 	{
 		StagingDirectory = tempDirectory,
 	};
@@ -37,12 +37,15 @@ try
 		loggerFactory.CreateLogger<ICheckAppImages>(),
 		fileSystemAppImageAccess);
 
+	// Use the non-interactive app image checker for looking up the program path.
+	var programPathsLookup = new ProgramPathsLookup(appImageChecker);
+
 	if (dialogControl != null)
 		appImageChecker = new InteractiveAppImageChecker(dialogControl, appImageChecker);
 
 	var path = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0])
 		? new CompatPath(args[0])
-		: await executionConfiguration.GetProgramPathAsync(cancellationTokenSource.Token);
+		: await programPathsLookup.GetProgramPathAsync(cancellationTokenSource.Token);
 
 	var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
 
@@ -72,14 +75,14 @@ try
 		new DesktopResourceManagement(
 			executionConfiguration,
 			executionConfiguration,
-			executionConfiguration,
+			programPathsLookup,
 			processStarter));
 
 	if (dialogControl != null)
 		desktopAppRegistration = new InteractiveResourceManagement(
 			desktopAppRegistration,
 			dialogControl,
-			executionConfiguration,
+			programPathsLookup,
 			processStarter);
 
 	if (args.Contains("--remove"))
@@ -140,8 +143,8 @@ static async Task<bool> CheckIfProgramExists(string programName, CancellationTok
 
 namespace SharperIntegration
 {
-	internal class ExecutionConfiguration(ICheckAppImages appImageChecker)
-		: IAppImageExtractionConfiguration, IDesktopAppLocations, IProgramPaths
+	internal class ExecutionConfiguration
+		: IAppImageExtractionConfiguration, IDesktopAppLocations
 	{
 		private readonly Lazy<IPath> _lazyIconDirectory = new(() => new CompatPath("~/.local/share/icons"));
 
@@ -150,13 +153,15 @@ namespace SharperIntegration
 
 		private readonly Lazy<IPath> _lazyMimeConfigPath = new(() => new CompatPath("~/.config/mimeapps.list"));
 
-		private readonly SemaphoreSlim _semaphore = new(1, 1);
-
 		public IPath StagingDirectory { get; init; } = CompatPath.Empty;
 		public IPath IconDirectory => _lazyIconDirectory.Value;
 		public IPath DesktopEntryDirectory => _lazyDesktopEntryDirectory.Value;
 		public IPath MimeConfigPath => _lazyMimeConfigPath.Value;
+	}
 
+	internal class ProgramPathsLookup(ICheckAppImages appImageChecker) : IProgramPaths
+	{
+		private readonly SemaphoreSlim _semaphore = new(1, 1);
 		private IPath? _programPath;
 
 		public Task<IPath> GetProgramPathAsync(CancellationToken cancellationToken = default) =>
