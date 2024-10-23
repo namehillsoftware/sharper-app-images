@@ -15,69 +15,97 @@ Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
 
 await using var serilogger = new LoggerConfiguration()
     .WriteTo.Console()
+    .WriteTo.LocalSyslog(appName: "SharperIntegration")
     .CreateLogger();
 
 using var loggerFactory = new SerilogLoggerFactory(serilogger);
 
-using var tempDirectory = new TempDirectory();
-
-var executionConfiguration = new ExecutionConfiguration
-{
-    StagingDirectory = tempDirectory,
-};
-
-var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
-var appImageChecker = new LoggingAppImageChecker(
-    loggerFactory.CreateLogger<ICheckAppImages>(),
-    fileSystemAppImageAccess);
-
-var fileName = args.Length > 0 ? args[0] : Environment.CommandLine;
-
-if (string.IsNullOrWhiteSpace(fileName)) return -1;
-
-var path = new CompatPath(fileName);
-var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
-
-if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
-
-var appImage = fileSystemAppImageAccess.GetExecutableAppImage(path);
-
-if (cancellationTokenSource.IsCancellationRequested) return -1;
-
-var appImageAccessLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
-var appImageAccess = new LoggingAppImageExtractor(
-    appImageAccessLogger,
-    new FileSystemAppImageAccess(executionConfiguration));
-
-var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
-if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
-
 var processStarter = new ProcessStarter(loggerFactory.CreateLogger<ProcessStarter>());
-IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
-    loggerFactory.CreateLogger<LoggingResourceManagement>(),
-    new DesktopResourceManagement(executionConfiguration, executionConfiguration, executionConfiguration, processStarter));
+var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
 
-if (!args.Contains("--non-interactive"))
+try
 {
-    var dialogControl = await GetInteractionControls(cancellationTokenSource.Token);
-    if (dialogControl != null)
-		desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl, executionConfiguration, processStarter);
-}
+	using var tempDirectory = new TempDirectory();
 
-if (args.Contains("--remove"))
-{
-    await desktopAppRegistration.RemoveResources(appImage, desktopResources, cancellationTokenSource.Token);
-}
-else if (args.Contains("--update"))
-{
-    await desktopAppRegistration.UpdateImage(appImage, cancellationTokenSource.Token);
-}
-else
-{
-    await desktopAppRegistration.RegisterResources(appImage, desktopResources, cancellationTokenSource.Token);
-}
+	var executionConfiguration = new ExecutionConfiguration { StagingDirectory = tempDirectory, };
 
-Console.CancelKeyPress -= OnConsoleOnCancelKeyPress;
+	var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
+	ICheckAppImages appImageChecker = new LoggingAppImageChecker(
+		loggerFactory.CreateLogger<ICheckAppImages>(),
+		fileSystemAppImageAccess);
+
+	if (dialogControl != null)
+		appImageChecker = new InteractiveAppImageChecker(dialogControl, appImageChecker);
+
+	var fileName = args.Length > 0 ? args[0] : Environment.CommandLine;
+
+	if (string.IsNullOrWhiteSpace(fileName)) return -1;
+
+	var path = new CompatPath(fileName);
+	var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
+
+	if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
+
+	var appImage = fileSystemAppImageAccess.GetExecutableAppImage(path);
+
+	if (cancellationTokenSource.IsCancellationRequested) return -1;
+
+	var appImageAccessLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
+	IAppImageExtractor appImageAccess = new LoggingAppImageExtractor(
+		appImageAccessLogger,
+		new FileSystemAppImageAccess(executionConfiguration));
+
+	if (dialogControl != null)
+		appImageAccess = new InteractiveAppImageExtractor(dialogControl, appImageAccess);
+
+	var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
+	if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
+
+	IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
+		loggerFactory.CreateLogger<LoggingResourceManagement>(),
+		new DesktopResourceManagement(
+			executionConfiguration,
+			executionConfiguration,
+			executionConfiguration,
+			processStarter));
+
+	if (dialogControl != null)
+		desktopAppRegistration = new InteractiveResourceManagement(
+			desktopAppRegistration,
+			dialogControl,
+			executionConfiguration,
+			processStarter);
+
+	if (args.Contains("--remove"))
+	{
+		await desktopAppRegistration.RemoveResources(appImage, desktopResources, cancellationTokenSource.Token);
+	}
+	else if (args.Contains("--update"))
+	{
+		await desktopAppRegistration.UpdateImage(appImage, cancellationTokenSource.Token);
+	}
+	else
+	{
+		await desktopAppRegistration.RegisterResources(appImage, desktopResources, cancellationTokenSource.Token);
+	}
+}
+catch (Exception e) when (e is not TaskCanceledException)
+{
+	const string unexpectedError = "An unexpected error occurred while running Sharper Integration.";
+
+	loggerFactory.CreateLogger<Program>().LogError(e, unexpectedError);
+
+	if (cancellationTokenSource.IsCancellationRequested) return -1;
+
+	if (dialogControl != null)
+	{
+		await dialogControl.DisplayWarning($"{unexpectedError} Please consult the logs for more information.");
+	}
+}
+finally
+{
+	Console.CancelKeyPress -= OnConsoleOnCancelKeyPress;
+}
 
 return 0;
 
@@ -86,6 +114,7 @@ void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEv
 
 async Task<IUserInteraction?> GetInteractionControls(CancellationToken cancellationToken = default)
 {
+	if (args.Contains("--non-interactive")) return null;
     if (await CheckIfProgramExists("zenity", cancellationToken)) return new ZenityInteraction(processStarter);
     if (await CheckIfProgramExists("kdialog", cancellationToken)) return new KDialogInteraction(processStarter);
     return Console.WindowHeight > 0 ? new ConsoleInteraction() : null;

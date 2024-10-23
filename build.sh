@@ -8,7 +8,11 @@ BUILD_ID="$(od  -vN "8" -An -tx1  /dev/urandom | tr -d " \n")"
 
 echo "Build ID: ${BUILD_ID}"
 
-docker buildx build --tag "${BUILD_ID}" . && docker run --name "${BUILD_ID}" --privileged "${BUILD_ID}"
+GIT_TAG=$(git describe)
+
+# Run in a privileged container to help FUSE run properly
+docker buildx build --tag "${BUILD_ID}" . \
+	&& docker run --name "${BUILD_ID}" -e VERSION="${GIT_TAG}" --privileged "${BUILD_ID}"
 
 EXIT_CODE=$?
 

@@ -15,17 +15,17 @@ public class InteractiveResourceManagement(
 
     public async Task RegisterResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
-        var question = string.Format(RegistrationQuestion, GetAppName(appImage));
-        var promptResult = await userInteraction.PromptYesNo("Integrate into Desktop?", question, cancellationToken);
+        var question = string.Format(RegistrationQuestion, appImage.GetAppName());
+        var promptResult = await userInteraction.PromptYesNo(question, cancellationToken);
         if (promptResult)
             await inner.RegisterResources(appImage, desktopResources, cancellationToken);
     }
 
     public async Task UpdateImage(AppImage appImage, CancellationToken cancellationToken = default)
     {
-	    var appName = GetAppName(appImage);
+	    var appName = appImage.GetAppName();
 	    var question = string.Format(UpdateQuestion, appName);
-        var promptResult = await userInteraction.PromptYesNo("Update AppImage", question, cancellationToken);
+        var promptResult = await userInteraction.PromptYesNo(question, cancellationToken);
         if (!promptResult) return;
 
         var workingDirectory = programPaths.ProgramPath.Parent();
@@ -42,7 +42,6 @@ public class InteractiveResourceManagement(
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var progressDisplay = userInteraction.DisplayIndeterminateProgress(
-	        "Updating AppImage",
 	        string.Format(UpdateInProgress, appName),
 	        linkedCancellationTokenSource.Token);
         var updateTask = inner.UpdateImage(appImage, linkedCancellationTokenSource.Token);
@@ -55,11 +54,9 @@ public class InteractiveResourceManagement(
 
     public async Task RemoveResources(AppImage appImage, DesktopResources desktopResources, CancellationToken cancellationToken = default)
     {
-	    var question = string.Format(RemovalQuestion, GetAppName(appImage));
-        var promptResult = await userInteraction.PromptYesNo("Remove from Desktop?", question, cancellationToken);
+	    var question = string.Format(RemovalQuestion, appImage.GetAppName());
+        var promptResult = await userInteraction.PromptYesNo(question, cancellationToken);
         if (promptResult)
             await inner.RemoveResources(appImage, desktopResources, cancellationToken);
     }
-
-    private static string GetAppName(AppImage appImage) => appImage.Path.Basename;
 }

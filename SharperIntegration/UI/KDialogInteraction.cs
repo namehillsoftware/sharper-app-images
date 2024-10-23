@@ -14,4 +14,10 @@ public class KDialogInteraction(IStartProcesses processes) : GraphicalUserProces
 	    [
 		    $"--msgbox={title}{Environment.NewLine}{Environment.NewLine}{information}",
 	    ]);
+
+    protected override (string, string[]) GetWarningDialogCommand(string title, string information) =>
+	    ("kdialog",
+	    [
+		    $"--sorry={title}{Environment.NewLine}{Environment.NewLine}{information}",
+	    ]);
 }

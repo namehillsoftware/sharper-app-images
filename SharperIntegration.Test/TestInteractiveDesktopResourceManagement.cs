@@ -35,7 +35,7 @@ public class TestInteractiveDesktopResourceManagement
 
 				var userInteraction = Substitute.For<IUserInteraction>();
 				userInteraction
-					.PromptYesNo("Integrate into Desktop?", "Integrate zzVbM5PrSeWK into the Desktop?",
+					.PromptYesNo("Integrate zzVbM5PrSeWK into the Desktop?",
 						Arg.Any<CancellationToken>())
 					.Returns(true);
 
@@ -88,7 +88,7 @@ public class TestInteractiveDesktopResourceManagement
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
-						.PromptYesNo("Update AppImage", "Update rMZ2dJJdeb8?", Arg.Any<CancellationToken>())
+						.PromptYesNo("Update rMZ2dJJdeb8?", Arg.Any<CancellationToken>())
 						.Returns(true);
 
 					return new InteractiveResourceManagement(
@@ -136,11 +136,11 @@ public class TestInteractiveDesktopResourceManagement
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
-						.PromptYesNo("Update AppImage", $"Update {AppImageName}?", Arg.Any<CancellationToken>())
+						.PromptYesNo($"Update {AppImageName}?", Arg.Any<CancellationToken>())
 						.Returns(true);
 
 					userInteraction
-						.DisplayIndeterminateProgress("Updating AppImage", $"Updating {AppImageName}...", Arg.Any<CancellationToken>())
+						.DisplayIndeterminateProgress($"Updating {AppImageName}...", Arg.Any<CancellationToken>())
 						.Returns(true);
 
 					return new InteractiveResourceManagement(
@@ -190,11 +190,11 @@ public class TestInteractiveDesktopResourceManagement
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
-						.PromptYesNo("Update AppImage", $"Update {AppImageName}?", Arg.Any<CancellationToken>())
+						.PromptYesNo($"Update {AppImageName}?", Arg.Any<CancellationToken>())
 						.Returns(true);
 
 					userInteraction
-						.DisplayIndeterminateProgress("Updating AppImage", $"Updating {AppImageName}...", Arg.Any<CancellationToken>())
+						.DisplayIndeterminateProgress($"Updating {AppImageName}...", Arg.Any<CancellationToken>())
 						.Returns(false);
 
 					return new InteractiveResourceManagement(
@@ -240,10 +240,10 @@ public class TestInteractiveDesktopResourceManagement
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
-						.PromptYesNo(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+						.PromptYesNo(Arg.Any<string>(), Arg.Any<CancellationToken>())
 						.Returns(true);
 					userInteraction
-						.PromptYesNo("Update AppImage", "Update GopalLian?", Arg.Any<CancellationToken>())
+						.PromptYesNo("Update GopalLian?", Arg.Any<CancellationToken>())
 						.Returns(false);
 
 					return new InteractiveResourceManagement(
@@ -292,7 +292,6 @@ public class TestInteractiveDesktopResourceManagement
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
 						.PromptYesNo(
-							"Remove from Desktop?",
 							"Remove xa6uxFIwo8e from Desktop?",
 							Arg.Any<CancellationToken>())
 						.Returns(true);
