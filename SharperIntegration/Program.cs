@@ -51,9 +51,12 @@ try
 	if (cancellationTokenSource.IsCancellationRequested) return -1;
 
 	var appImageAccessLogger = loggerFactory.CreateLogger<IAppImageExtractor>();
-	var appImageAccess = new LoggingAppImageExtractor(
+	IAppImageExtractor appImageAccess = new LoggingAppImageExtractor(
 		appImageAccessLogger,
 		new FileSystemAppImageAccess(executionConfiguration));
+
+	if (dialogControl != null)
+		appImageAccess = new InteractiveAppImageExtractor(dialogControl, appImageAccess);
 
 	var desktopResources = await appImageAccess.ExtractDesktopResources(appImage, cancellationTokenSource.Token);
 	if (desktopResources == null || cancellationTokenSource.IsCancellationRequested) return -1;
