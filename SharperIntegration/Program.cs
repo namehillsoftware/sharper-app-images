@@ -30,9 +30,12 @@ try
 	var executionConfiguration = new ExecutionConfiguration { StagingDirectory = tempDirectory, };
 
 	var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
-	var appImageChecker = new LoggingAppImageChecker(
+	ICheckAppImages appImageChecker = new LoggingAppImageChecker(
 		loggerFactory.CreateLogger<ICheckAppImages>(),
 		fileSystemAppImageAccess);
+
+	if (dialogControl != null)
+		appImageChecker = new InteractiveAppImageChecker(dialogControl, appImageChecker);
 
 	var fileName = args.Length > 0 ? args[0] : Environment.CommandLine;
 
@@ -57,12 +60,18 @@ try
 
 	IDesktopResourceManagement desktopAppRegistration = new LoggingResourceManagement(
 		loggerFactory.CreateLogger<LoggingResourceManagement>(),
-		new DesktopResourceManagement(executionConfiguration, executionConfiguration, executionConfiguration,
+		new DesktopResourceManagement(
+			executionConfiguration,
+			executionConfiguration,
+			executionConfiguration,
 			processStarter));
 
 	if (dialogControl != null)
-		desktopAppRegistration = new InteractiveResourceManagement(desktopAppRegistration, dialogControl,
-			executionConfiguration, processStarter);
+		desktopAppRegistration = new InteractiveResourceManagement(
+			desktopAppRegistration,
+			dialogControl,
+			executionConfiguration,
+			processStarter);
 
 	if (args.Contains("--remove"))
 	{
@@ -87,9 +96,7 @@ catch (Exception e) when (e is not TaskCanceledException)
 
 	if (dialogControl != null)
 	{
-		await dialogControl.DisplayWarning(
-			"Unexpected Error",
-			$"{unexpectedError} Please consult the logs for more information.");
+		await dialogControl.DisplayWarning($"{unexpectedError} Please consult the logs for more information.");
 	}
 }
 finally
