@@ -15,6 +15,8 @@ Its features include:
 
 Download SharperIntegration from [here](https://github.com/namehillsoftware/sharper-app-images/releases) and [make it executable](https://discourse.appimage.org/t/how-to-make-an-appimage-executable/). Then execute the AppImage, it should prompt you to install itself.
 
+![Example Usage](./examples/running-sharper-app-images-cinnamon.gif)
+
 ## Motivation
 
 - As a user, I want to be able to right-click on a program and integrate it into my desktop environment, so that I can launch it via my normal desktop conventions.
