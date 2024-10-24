@@ -20,5 +20,16 @@
 		</ul>
 	</description>
 
+	<screenshots>
+		<screenshot type="default">
+			<caption>Sharper Integration confirmation dialog.</caption>
+			<image type="source">https://raw.githubusercontent.com/namehillsoftware/sharper-app-images/refs/heads/main/examples/integration-prompt.png</image>
+		</screenshot>
+		<screenshot>
+			<caption>Example Sharper Integration usage.</caption>
+			<image type="source">https://raw.githubusercontent.com/namehillsoftware/sharper-app-images/refs/heads/main/examples/running-sharper-app-images-cinnamon.gif</image>
+		</screenshot>
+	</screenshots>
+
 	<launchable type="desktop-id">com.namehillsoftware.sharperintegration.desktop</launchable>
 </component>
