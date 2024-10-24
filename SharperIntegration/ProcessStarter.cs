@@ -12,7 +12,9 @@ public class ProcessStarter(ILogger<ProcessStarter> logger) : IStartProcesses
             var command = Cli.Wrap(processName)
                 .WithArguments(args)
                 .WithStandardOutputPipe(PipeTarget.ToDelegate(line => logger.LogInformation(line)))
-                .WithStandardErrorPipe(PipeTarget.ToDelegate(line => logger.LogError(line)));
+                .WithStandardErrorPipe(PipeTarget.ToDelegate(line => logger.LogError(line)))
+                .WithValidation(CommandResultValidation.None);
+
             var commandResult = await command.ExecuteAsync(cancellationToken);
             return commandResult.ExitCode;
         }

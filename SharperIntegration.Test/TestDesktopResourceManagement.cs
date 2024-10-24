@@ -51,7 +51,7 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.MimeConfigPath.Returns(mimeConfigFile);
 
                 var programPaths = Substitute.For<IProgramPaths>();
-                programPaths.ProgramPath.Returns(ProgramPath.Value);
+                programPaths.GetProgramPathAsync(Arg.Any<CancellationToken>()).Returns(ProgramPath.Value);
 
                 return new DesktopResourceManagement(
                     extractionConfig,
@@ -201,7 +201,9 @@ public class TestDesktopResourceManagement
                     });
 
                 var programPaths = Substitute.For<IProgramPaths>();
-                programPaths.ProgramPath.Returns(TestFixture.TestData / "fake-self");
+                programPaths
+	                .GetProgramPathAsync(Arg.Any<CancellationToken>())
+	                .Returns(TestFixture.TestData / "fake-self");
 
                 return new DesktopResourceManagement(
                     extractionConfig, desktopAppLocations, programPaths, processStarter);
@@ -242,7 +244,7 @@ public class TestDesktopResourceManagement
                 desktopAppLocations.IconDirectory.Returns(IconsDir.Value);
 
                 var programPaths = Substitute.For<IProgramPaths>();
-                programPaths.ProgramPath.Returns(ProgramPath.Value);
+                programPaths.GetProgramPathAsync(Arg.Any<CancellationToken>()).Returns(ProgramPath.Value);
 
                 return new DesktopResourceManagement(
                     extractionConfig,

@@ -4,5 +4,5 @@ namespace SharperIntegration.Registration;
 
 public interface IProgramPaths
 {
-    public IPath ProgramPath { get; }
+	public Task<IPath> GetProgramPathAsync(CancellationToken cancellationToken = default);
 }

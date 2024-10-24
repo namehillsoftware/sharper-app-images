@@ -84,7 +84,9 @@ public class TestInteractiveDesktopResourceManagement
 						});
 
 					var programPaths = Substitute.For<IProgramPaths>();
-					programPaths.ProgramPath.Returns(TestFixture.TestData / "fake-self");
+					programPaths
+						.GetProgramPathAsync(Arg.Any<CancellationToken>())
+						.Returns(TestFixture.TestData / "fake-self");
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
@@ -132,7 +134,7 @@ public class TestInteractiveDesktopResourceManagement
 					var processStarter = Substitute.For<IStartProcesses>();
 
 					var programPaths = Substitute.For<IProgramPaths>();
-					programPaths.ProgramPath.Returns(TestFixture.TestData);
+					programPaths.GetProgramPathAsync(Arg.Any<CancellationToken>()).Returns(TestFixture.TestData);
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
@@ -186,7 +188,7 @@ public class TestInteractiveDesktopResourceManagement
 						});
 
 					var programPaths = Substitute.For<IProgramPaths>();
-					programPaths.ProgramPath.Returns(TestFixture.TestData);
+					programPaths.GetProgramPathAsync(Arg.Any<CancellationToken>()).Returns(TestFixture.TestData);
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction
@@ -236,7 +238,9 @@ public class TestInteractiveDesktopResourceManagement
 						});
 
 					var programPaths = Substitute.For<IProgramPaths>();
-					programPaths.ProgramPath.Returns(TestFixture.TestData / "fake-self");
+					programPaths
+						.GetProgramPathAsync(Arg.Any<CancellationToken>())
+						.Returns(TestFixture.TestData / "fake-self");
 
 					var userInteraction = Substitute.For<IUserInteraction>();
 					userInteraction

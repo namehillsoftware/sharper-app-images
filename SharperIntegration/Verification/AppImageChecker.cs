@@ -6,7 +6,7 @@ public class AppImageChecker : ICheckAppImages
 {
     public async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
     {
-        await using var appImageSteam = path.Open(FileMode.Open);
+        await using var appImageSteam = path.FileInfo.Open(FileMode.Open, FileAccess.Read);
         var newPosition = appImageSteam.Seek(8, SeekOrigin.Begin);
         if (newPosition < 0) return IsAppImagePath(path);
 
@@ -18,7 +18,7 @@ public class AppImageChecker : ICheckAppImages
             var thirdByte = magicBytes[2];
             return thirdByte is 0x01 or 0x02 || IsAppImagePath(path);
         }
-    
+
         return IsAppImagePath(path);
     }
 

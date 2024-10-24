@@ -14,9 +14,9 @@ using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += OnConsoleOnCancelKeyPress;
 
 await using var serilogger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .WriteTo.LocalSyslog(appName: "SharperIntegration")
-    .CreateLogger();
+	.WriteTo.Console()
+	.WriteTo.LocalSyslog(appName: "SharperIntegration")
+	.CreateLogger();
 
 using var loggerFactory = new SerilogLoggerFactory(serilogger);
 
@@ -27,24 +27,33 @@ try
 {
 	using var tempDirectory = new TempDirectory();
 
-	var executionConfiguration = new ExecutionConfiguration { StagingDirectory = tempDirectory, };
+	var executionConfiguration = new ExecutionConfiguration
+	{
+		StagingDirectory = tempDirectory,
+	};
 
 	var fileSystemAppImageAccess = new FileSystemAppImageAccess(executionConfiguration);
 	ICheckAppImages appImageChecker = new LoggingAppImageChecker(
 		loggerFactory.CreateLogger<ICheckAppImages>(),
 		fileSystemAppImageAccess);
 
+	// Use the non-interactive app image checker for looking up the program path.
+	var programPathsLookup = new ProgramPathsLookup(appImageChecker);
+
 	if (dialogControl != null)
 		appImageChecker = new InteractiveAppImageChecker(dialogControl, appImageChecker);
 
-	var fileName = args.Length > 0 ? args[0] : Environment.CommandLine;
+	var path = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0])
+		? new CompatPath(args[0])
+		: await programPathsLookup.GetProgramPathAsync(cancellationTokenSource.Token);
 
-	if (string.IsNullOrWhiteSpace(fileName)) return -1;
-
-	var path = new CompatPath(fileName);
 	var isAppImage = await appImageChecker.IsAppImage(path, cancellationTokenSource.Token);
 
-	if (!isAppImage || cancellationTokenSource.IsCancellationRequested) return -1;
+	if (!isAppImage || cancellationTokenSource.IsCancellationRequested)
+	{
+		Console.ReadKey();
+		return -1;
+	}
 
 	var appImage = fileSystemAppImageAccess.GetExecutableAppImage(path);
 
@@ -66,14 +75,14 @@ try
 		new DesktopResourceManagement(
 			executionConfiguration,
 			executionConfiguration,
-			executionConfiguration,
+			programPathsLookup,
 			processStarter));
 
 	if (dialogControl != null)
 		desktopAppRegistration = new InteractiveResourceManagement(
 			desktopAppRegistration,
 			dialogControl,
-			executionConfiguration,
+			programPathsLookup,
 			processStarter);
 
 	if (args.Contains("--remove"))
@@ -110,45 +119,143 @@ finally
 return 0;
 
 void OnConsoleOnCancelKeyPress(object? o, ConsoleCancelEventArgs consoleCancelEventArgs) =>
-    cancellationTokenSource.Cancel();
+	cancellationTokenSource.Cancel();
 
 async Task<IUserInteraction?> GetInteractionControls(CancellationToken cancellationToken = default)
 {
 	if (args.Contains("--non-interactive")) return null;
-    if (await CheckIfProgramExists("zenity", cancellationToken)) return new ZenityInteraction(processStarter);
-    if (await CheckIfProgramExists("kdialog", cancellationToken)) return new KDialogInteraction(processStarter);
-    return Console.WindowHeight > 0 ? new ConsoleInteraction() : null;
+	if (await CheckIfProgramExists("zenity", cancellationToken)) return new ZenityInteraction(processStarter);
+	if (await CheckIfProgramExists("kdialog", cancellationToken)) return new KDialogInteraction(processStarter);
+	return Console.WindowHeight > 0 ? new ConsoleInteraction() : null;
 }
 
 static async Task<bool> CheckIfProgramExists(string programName, CancellationToken cancellationToken = default)
 {
-    var whichProcess = Process.Start(new ProcessStartInfo("which", programName)
-    {
-        RedirectStandardOutput = true,
-    });
+	var whichProcess = Process.Start(new ProcessStartInfo("which", programName) { RedirectStandardOutput = true, });
 
-    if (whichProcess is null) return false;
+	if (whichProcess is null) return false;
 
-    await whichProcess.WaitForExitAsync(cancellationToken);
+	await whichProcess.WaitForExitAsync(cancellationToken);
 
-    var whichProcessOutput = await whichProcess.StandardOutput.ReadToEndAsync(cancellationToken);
-    return whichProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
+	var whichProcessOutput = await whichProcess.StandardOutput.ReadToEndAsync(cancellationToken);
+	return whichProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
 }
 
 namespace SharperIntegration
 {
-    internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations, IProgramPaths
-    {
-        private readonly Lazy<IPath> _lazyIconDirectory = new(() => new CompatPath("~/.local/share/icons"));
-        private readonly Lazy<IPath> _lazyDesktopEntryDirectory = new(() => new CompatPath("~/.local/share/applications"));
-        private readonly Lazy<IPath> _lazyMimeConfigPath = new(() => new CompatPath("~/.config/mimeapps.list"));
-        private readonly Lazy<IPath> _lazyProgramPath = new(() =>
-            new CompatPath(Environment.CommandLine.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).First()));
+	internal class ExecutionConfiguration
+		: IAppImageExtractionConfiguration, IDesktopAppLocations
+	{
+		private readonly Lazy<IPath> _lazyIconDirectory = new(() => new CompatPath("~/.local/share/icons"));
 
-        public IPath StagingDirectory { get; init; } = CompatPath.Empty;
-        public IPath IconDirectory => _lazyIconDirectory.Value;
-        public IPath DesktopEntryDirectory => _lazyDesktopEntryDirectory.Value;
-        public IPath MimeConfigPath => _lazyMimeConfigPath.Value;
-        public IPath ProgramPath => _lazyProgramPath.Value;
-    }
+		private readonly Lazy<IPath> _lazyDesktopEntryDirectory =
+			new(() => new CompatPath("~/.local/share/applications"));
+
+		private readonly Lazy<IPath> _lazyMimeConfigPath = new(() => new CompatPath("~/.config/mimeapps.list"));
+
+		public IPath StagingDirectory { get; init; } = CompatPath.Empty;
+		public IPath IconDirectory => _lazyIconDirectory.Value;
+		public IPath DesktopEntryDirectory => _lazyDesktopEntryDirectory.Value;
+		public IPath MimeConfigPath => _lazyMimeConfigPath.Value;
+	}
+
+	internal class ProgramPathsLookup(ICheckAppImages appImageChecker) : IProgramPaths
+	{
+		private readonly SemaphoreSlim _semaphore = new(1, 1);
+		private IPath? _programPath;
+
+		public Task<IPath> GetProgramPathAsync(CancellationToken cancellationToken = default) =>
+			GetProgramPathAsyncSynchronized(cancellationToken);
+
+		private async Task<IPath> GetProgramPathAsyncSynchronized(CancellationToken cancellationToken = default)
+		{
+			if (_programPath != null) return _programPath;
+
+			await _semaphore.WaitAsync(cancellationToken);
+			try
+			{
+				if (_programPath != null) return _programPath;
+
+				_programPath = await SearchForAppImageProgramPath(cancellationToken);
+				return _programPath;
+			}
+			finally
+			{
+				_semaphore.Release();
+			}
+		}
+
+		private async Task<IPath> SearchForAppImageProgramPath(CancellationToken cancellationToken = default)
+		{
+			var processPathString = Environment.GetCommandLineArgs().FirstOrDefault();
+			if (processPathString != null)
+			{
+				var processPath = new CompatPath(processPathString);
+				if (await appImageChecker.IsAppImage(processPath, cancellationToken)) return processPath;
+			}
+
+			var processId = Environment.ProcessId;
+
+			var commandPath = await GetCommandLine(processId, cancellationToken);
+			if (commandPath != null) return commandPath;
+
+			while (processId > 0)
+			{
+				if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+				await using var processFileStream =
+					new FileStream($"/proc/{processId}/status", FileMode.Open, FileAccess.Read);
+				using var streamReader = new StreamReader(processFileStream);
+
+				processId = 0;
+
+				const string parentIdSearchString = "PPid:";
+				while (await streamReader.ReadLineAsync(cancellationToken) is { } line)
+				{
+					if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+					if (!line.StartsWith(parentIdSearchString))
+					{
+						continue;
+					}
+
+					var processIdString = line[parentIdSearchString.Length..].Trim();
+					var parentProcessId = int.Parse(processIdString);
+
+					commandPath = await GetCommandLine(parentProcessId, cancellationToken);
+					if (commandPath != null)
+					{
+						return commandPath;
+					}
+
+					processId = parentProcessId;
+					break;
+				}
+			}
+
+			throw new InvalidOperationException("Application is not executing as an AppImage.");
+		}
+
+
+		private async Task<IPath?> GetCommandLine(int processId, CancellationToken cancellationToken = default)
+		{
+			if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
+
+			await using var commandFileStream =
+				new FileStream($"/proc/{processId}/cmdline", FileMode.Open, FileAccess.Read);
+			using var commandStreamReader = new StreamReader(commandFileStream);
+			var command = await commandStreamReader.ReadToEndAsync(cancellationToken);
+			var commands = command.Split('\0', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+			command = commands.FirstOrDefault();
+			if (command == null)
+			{
+				return null;
+			}
+
+			var processPath = new CompatPath(command);
+			if (await appImageChecker.IsAppImage(processPath, cancellationToken)) return processPath;
+
+			return null;
+		}
+	}
 }
