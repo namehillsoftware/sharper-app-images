@@ -8,6 +8,7 @@ using PathLib;
 using SharpCompress.Compressors.Xz;
 using SharpCompress.Readers;
 using SharperIntegration.Extraction;
+using ZstdSharp;
 
 namespace SharperIntegration.Access;
 
@@ -15,6 +16,8 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
 {
     public async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
     {
+	    if (!path.IsFile()) return false;
+
         var type = await GetAppImageType(path, cancellationToken);
 
         return type is 1 or 2 || IsAppImagePath(path);
@@ -97,7 +100,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
 
     private async Task<IEnumerable<IPath>> GetStagedResources(
         IUnixFileSystem fileSystem,
-        DiscDirectoryInfo rootDirectory, 
+        DiscDirectoryInfo rootDirectory,
         string resourceExtension,
         SearchOption searchOption,
         CancellationToken cancellationToken = default)
@@ -151,7 +154,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
                     GetDecompressor = (kind, _) => kind switch
                     {
                         SquashFileSystemCompressionKind.ZStd => stream =>
-                            new ZstdSharp.DecompressionStream(stream, leaveOpen: true),
+                            new DecompressionStream(stream, leaveOpen: true),
                         SquashFileSystemCompressionKind.Xz => stream => new XZStream(stream),
                         SquashFileSystemCompressionKind.Unknown => stream =>
                         {
@@ -167,7 +170,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
 
     private static IEnumerable<DiscFileSystemInfo> FindFilesIgnoringLinks(
         IUnixFileSystem fileSystemReader,
-        DiscDirectoryInfo directory, 
+        DiscDirectoryInfo directory,
         string extension,
         SearchOption searchOption,
         CancellationToken cancellationToken = default)

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Machine.Specifications;
-using PathLib;
 using SharperIntegration.Verification;
 
 namespace SharperIntegration.Test;
@@ -49,7 +48,7 @@ public class AppImageCheckerTest
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_with_an_appimage_extension
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -92,7 +91,7 @@ public class AppImageCheckerTest
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_it_is_a_type_two_image
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -112,7 +111,7 @@ public class AppImageCheckerTest
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_it_is_an_unknown_type_image
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -129,7 +128,7 @@ public class AppImageCheckerTest
                     isAppImage = await subject.Value.IsAppImage(testFile);
                 };
 
-                It is_an_app_image = () => isAppImage.Should().BeFalse();
+                It is_NOT_an_app_image = () => isAppImage.Should().BeFalse();
             }
         }
     }

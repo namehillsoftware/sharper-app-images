@@ -36,7 +36,7 @@ public class TestAppImageAccess
 
             private It is_executable = () =>
                 _appImage!.Path.FileInfo.UnixFileMode.Should().HaveFlag(UnixFileMode.UserExecute);
-            
+
             private Cleanup after = () =>
             {
                 if (tempDir.IsValueCreated) ((IDisposable)tempDir.Value).Dispose();
@@ -75,7 +75,7 @@ public class TestAppImageAccess
 
             It has_the_correct_desktop_entry = () =>
                 _desktopResources!.DesktopEntry!.FileInfo.FullName.Should().Match($"{tempDir}*echo.desktop");
-            
+
             It has_the_correct_desktop_icon = () =>
                 _desktopResources!.Icons.Single().FileInfo.FullName.Should().Match($"{tempDir}*utilities-terminal.svg");
 
@@ -84,7 +84,7 @@ public class TestAppImageAccess
                 if (tempDir.IsValueCreated) ((IDisposable)tempDir.Value).Dispose();
             };
         }
-        
+
         public class and_it_does_not_execute
         {
             public class when_the_desktop_resources_are_requested
@@ -132,7 +132,7 @@ public class TestAppImageAccess
             }
         }
     }
-    
+
     public class Given_a_file_with_no_magical_bytes
     {
         public class And_without_an_extension
@@ -174,7 +174,7 @@ public class TestAppImageAccess
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_with_an_appimage_extension
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -217,7 +217,7 @@ public class TestAppImageAccess
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_it_is_a_type_two_image
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -237,7 +237,7 @@ public class TestAppImageAccess
                 It is_an_app_image = () => isAppImage.Should().BeTrue();
             }
         }
-        
+
         public class And_it_is_an_unknown_type_image
         {
             public class When_checking_if_the_file_is_an_app_image
@@ -256,6 +256,24 @@ public class TestAppImageAccess
 
                 It is_an_app_image = () => isAppImage.Should().BeFalse();
             }
+        }
+
+        public class and_it_is_a_directory
+        {
+	        public class When_checking_if_the_file_is_an_app_image
+	        {
+		        private static readonly Lazy<FileSystemAppImageAccess> subject = new(() => new FileSystemAppImageAccess(Substitute.For<IAppImageExtractionConfiguration>()));
+
+		        private static bool isAppImage;
+
+		        private Because of = async () =>
+		        {
+			        using var tempDir = new TempDirectory();
+			        isAppImage = await subject.Value.IsAppImage(tempDir);
+		        };
+
+		        It is_NOT_an_app_image = () => isAppImage.Should().BeFalse();
+	        }
         }
     }
 }
