@@ -222,6 +222,11 @@ namespace SharperIntegration
 					var processIdString = line[parentIdSearchString.Length..].Trim();
 					var parentProcessId = int.Parse(processIdString);
 
+					if (parentProcessId == 0)
+					{
+						throw new InvalidOperationException("Application is not executing as an AppImage.");
+					}
+
 					commandPath = await GetCommandLine(parentProcessId, cancellationToken);
 					if (commandPath != null)
 					{

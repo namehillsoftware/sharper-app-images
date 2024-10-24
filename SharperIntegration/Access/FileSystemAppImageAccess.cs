@@ -194,12 +194,22 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
                 continue;
             }
 
-            if (searchOption == SearchOption.AllDirectories && info.Attributes.HasFlag(FileAttributes.Directory))
+            if (info.Attributes.HasFlag(FileAttributes.Directory))
             {
-                var directoryInfo = fileSystemReader.GetDirectoryInfo(info.FullName);
-                foreach (var inner in FindFilesIgnoringLinks(fileSystemReader, directoryInfo, extension, searchOption,
-                             cancellationToken))
-                    yield return inner;
+	            if (searchOption == SearchOption.AllDirectories)
+	            {
+		            var directoryInfo = fileSystemReader.GetDirectoryInfo(info.FullName);
+		            var recursiveSearch = FindFilesIgnoringLinks(
+			            fileSystemReader,
+			            directoryInfo,
+			            extension,
+			            searchOption,
+			            cancellationToken);
+		            foreach (var inner in recursiveSearch)
+			            yield return inner;
+	            }
+
+	            continue;
             }
 
             if (info.Extension != extension) continue;
