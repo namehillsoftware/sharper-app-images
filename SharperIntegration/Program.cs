@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿using CliWrap;
 using Microsoft.Extensions.Logging;
 using PathLib;
 using Serilog;
@@ -132,20 +132,19 @@ async Task<IUserInteraction?> GetInteractionControls(CancellationToken cancellat
 
 static async Task<bool> CheckIfProgramExists(string programName, CancellationToken cancellationToken = default)
 {
-	var whichProcess = Process.Start(new ProcessStartInfo("which", programName) { RedirectStandardOutput = true, });
+	var whichProcessOutput = string.Empty;
+	var commandResult = await Cli.Wrap("which")
+		.WithArguments(programName)
+		.WithStandardOutputPipe(PipeTarget.ToDelegate(o => whichProcessOutput = o))
+		.WithValidation(CommandResultValidation.None)
+		.ExecuteAsync(cancellationToken);
 
-	if (whichProcess is null) return false;
-
-	await whichProcess.WaitForExitAsync(cancellationToken);
-
-	var whichProcessOutput = await whichProcess.StandardOutput.ReadToEndAsync(cancellationToken);
-	return whichProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
+	return commandResult.ExitCode == 0 && !string.IsNullOrWhiteSpace(whichProcessOutput);
 }
 
 namespace SharperIntegration
 {
-	internal class ExecutionConfiguration
-		: IAppImageExtractionConfiguration, IDesktopAppLocations
+	internal class ExecutionConfiguration : IAppImageExtractionConfiguration, IDesktopAppLocations
 	{
 		private readonly Lazy<IPath> _lazyIconDirectory = new(() => new CompatPath("~/.local/share/icons"));
 

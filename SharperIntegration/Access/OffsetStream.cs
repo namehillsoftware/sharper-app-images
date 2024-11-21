@@ -2,8 +2,8 @@ namespace SharperIntegration.Access;
 
 public class OffsetStream(Stream streamImplementation) : Stream
 {
-    private readonly long initialOffset = streamImplementation.Position;
-    
+    private readonly long _initialOffset = streamImplementation.Position;
+
     public override void Flush()
     {
         streamImplementation.Flush();
@@ -16,12 +16,12 @@ public class OffsetStream(Stream streamImplementation) : Stream
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        return streamImplementation.Seek(offset + initialOffset, origin);
+        return streamImplementation.Seek(offset + _initialOffset, origin);
     }
 
     public override void SetLength(long value)
     {
-        streamImplementation.SetLength(value + initialOffset);
+        streamImplementation.SetLength(value + _initialOffset);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
@@ -35,11 +35,11 @@ public class OffsetStream(Stream streamImplementation) : Stream
 
     public override bool CanWrite => streamImplementation.CanWrite;
 
-    public override long Length => streamImplementation.Length - initialOffset;
+    public override long Length => streamImplementation.Length - _initialOffset;
 
     public override long Position
     {
-        get => streamImplementation.Position - initialOffset;
-        set => streamImplementation.Position = value + initialOffset;
+        get => streamImplementation.Position - _initialOffset;
+        set => streamImplementation.Position = value + _initialOffset;
     }
 }
