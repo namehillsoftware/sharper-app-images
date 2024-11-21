@@ -14,6 +14,8 @@ namespace SharperIntegration.Access;
 
 public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractionConfiguration) : IAppImageAccess
 {
+	private static readonly HashSet<string> _resourceExtensions = ["png", "svg", "svgz", "jpg", "jpeg"];
+
     public async Task<bool> IsAppImage(IPath path, CancellationToken cancellationToken = default)
     {
 	    if (!path.IsFile()) return false;
@@ -58,7 +60,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
         var fileSystem = fileSystemContainer.FileSystem;
 
         var resources =
-            await GetStagedResources(fileSystem, "desktop", SearchOption.AllDirectories, cancellationToken);
+            await GetStagedResources(fileSystem, ["desktop"], SearchOption.AllDirectories, cancellationToken);
         return resources.FirstOrDefault();
     }
 
@@ -67,48 +69,42 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
         await using var fileSystemContainer = await GetFileSystemContainer(appImage, cancellationToken);
         var fileSystem = fileSystemContainer.FileSystem;
 
-        IPath[] resources =
-        [
-            ..await GetStagedResources(fileSystem, "png", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..await GetStagedResources(fileSystem, "svg", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..await GetStagedResources(fileSystem, "svgz", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..await GetStagedResources(fileSystem, "jpg", SearchOption.TopDirectoryOnly, cancellationToken),
-            ..await GetStagedResources(fileSystem, "jpeg", SearchOption.TopDirectoryOnly, cancellationToken),
-        ];
+        var resources = await GetStagedResources(
+	        fileSystem,
+	        _resourceExtensions,
+	        SearchOption.TopDirectoryOnly,
+	        cancellationToken);
 
         var directory = fileSystem.GetDirectoryInfo("usr/share/icons");
         if (directory.Exists)
         {
-            resources =
-            [
-                ..resources,
-                ..await GetStagedResources(fileSystem, directory, "png", SearchOption.AllDirectories, cancellationToken),
-                ..await GetStagedResources(fileSystem, directory, "svg", SearchOption.AllDirectories, cancellationToken),
-                ..await GetStagedResources(fileSystem, directory, "svgz", SearchOption.AllDirectories, cancellationToken),
-                ..await GetStagedResources(fileSystem, directory, "jpg", SearchOption.AllDirectories, cancellationToken),
-                ..await GetStagedResources(fileSystem, directory, "jpeg", SearchOption.AllDirectories, cancellationToken)
-            ];
+	        resources = resources.Concat(await GetStagedResources(
+		        fileSystem,
+		        directory,
+		        _resourceExtensions,
+		        SearchOption.AllDirectories,
+		        cancellationToken));
         }
 
-        return new HashSet<IPath>(resources);
+        return resources.ToHashSet();
     }
 
-    private Task<IEnumerable<IPath>> GetStagedResources(IUnixFileSystem fileSystem, string resourceExtension, SearchOption searchOption, CancellationToken cancellationToken = default)
+    private Task<IEnumerable<IPath>> GetStagedResources(IUnixFileSystem fileSystem, IEnumerable<string> resourceExtensions, SearchOption searchOption, CancellationToken cancellationToken = default)
     {
-        return GetStagedResources(fileSystem, fileSystem.Root, resourceExtension, searchOption, cancellationToken);
+        return GetStagedResources(fileSystem, fileSystem.Root, resourceExtensions, searchOption, cancellationToken);
     }
 
     private async Task<IEnumerable<IPath>> GetStagedResources(
         IUnixFileSystem fileSystem,
         DiscDirectoryInfo rootDirectory,
-        string resourceExtension,
+        IEnumerable<string> resourceExtensions,
         SearchOption searchOption,
         CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested) throw new TaskCanceledException();
 
         var tmpFiles =
-            FindFilesIgnoringLinks(fileSystem, rootDirectory, resourceExtension, searchOption, cancellationToken);
+            FindFilesIgnoringLinks(fileSystem, rootDirectory, resourceExtensions, searchOption, cancellationToken);
         var resources = new LinkedList<IPath>();
         var stagingDirectory = extractionConfiguration.StagingDirectory;
         foreach (var tmpFile in tmpFiles)
@@ -171,10 +167,11 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
     private static IEnumerable<DiscFileSystemInfo> FindFilesIgnoringLinks(
         IUnixFileSystem fileSystemReader,
         DiscDirectoryInfo directory,
-        string extension,
+        IEnumerable<string> extensions,
         SearchOption searchOption,
         CancellationToken cancellationToken = default)
     {
+	    var extensionsSet = extensions as ISet<string> ?? extensions.ToHashSet();
         var infos = directory.GetFileSystemInfos();
         foreach (var info in infos)
         {
@@ -202,7 +199,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
 		            var recursiveSearch = FindFilesIgnoringLinks(
 			            fileSystemReader,
 			            directoryInfo,
-			            extension,
+			            extensionsSet,
 			            searchOption,
 			            cancellationToken);
 		            foreach (var inner in recursiveSearch)
@@ -212,7 +209,7 @@ public class FileSystemAppImageAccess(IAppImageExtractionConfiguration extractio
 	            continue;
             }
 
-            if (info.Extension != extension) continue;
+            if (!extensionsSet.Contains(info.Extension)) continue;
 
             yield return info;
         }
