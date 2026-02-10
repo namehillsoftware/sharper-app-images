@@ -1,6 +1,6 @@
 # Sharper Integration
 
-<img src="./AppImage/sharper-integration.svg" width="300" alt="Sharper Integration Logo" title="Sharper Integration Logo" />
+<img src="./AppImage/usr/share/icons/hicolor/scalable/apps/sharper-integration.svg" width="300" alt="Sharper Integration Logo" title="Sharper Integration Logo" />
 
 Sharper Integration is an AppImage desktop integration program that aims for simple integration via established Linux desktop conventions.
 
