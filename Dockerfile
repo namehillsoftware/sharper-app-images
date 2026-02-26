@@ -37,10 +37,9 @@ RUN apt-get update -y && \
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool && \
     chmod +x appimagetool #&&
 
-COPY --from=build /out /AppDir/
 COPY --from=build /out/SharperIntegration /AppDir/AppRun
 COPY --from=build /src/AppImage /AppDir/
 
 WORKDIR /out
 
-ENTRYPOINT ["/appimagetool", "/AppDir", "-g"]
+ENTRYPOINT ["/appimagetool", "/AppDir"]
