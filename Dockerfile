@@ -31,16 +31,17 @@ FROM debian:bullseye-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN echo "#!/usr/bin/env bash \n /appimagetool $* /AppDir" > entrypoint.sh && chmod +x entrypoint.sh
+
 RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends wget ca-certificates fuse file gpg appstream desktop-file-utils zsync -y && \
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool && \
     chmod +x appimagetool #&&
 
-COPY --from=build /out /AppDir/
 COPY --from=build /out/SharperIntegration /AppDir/AppRun
 COPY --from=build /src/AppImage /AppDir/
 
 WORKDIR /out
 
-ENTRYPOINT ["/appimagetool", "/AppDir", "-g"]
+ENTRYPOINT ["/entrypoint.sh"]

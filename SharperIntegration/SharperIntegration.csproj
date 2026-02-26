@@ -7,7 +7,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PublishReadyToRun>True</PublishReadyToRun>
-<!--		<PublishAot>True</PublishAot>-->
+		<PublishAot>True</PublishAot>
 		<PublishTrimmed>True</PublishTrimmed>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
@@ -23,6 +23,7 @@
 		<PackageReference Include="PathLib" Version="0.9.8"/>
 		<PackageReference Include="SharpCompress" Version="0.38.0"/>
 		<PackageReference Include="CliWrap" Version="3.6.6"/>
+		<PackageReference Include="NameHillSoftware.TypeAdoption" Version="1.3.4" />
 	</ItemGroup>
 
 </Project>

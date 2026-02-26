@@ -12,7 +12,7 @@ GIT_TAG=$(git describe)
 
 # Run in a privileged container to help FUSE run properly
 docker buildx build --tag "${BUILD_ID}" . \
-	&& docker run --name "${BUILD_ID}" -e VERSION="${GIT_TAG}" --privileged "${BUILD_ID}"
+	&& docker run --name "${BUILD_ID}" -e VERSION="${GIT_TAG}" --privileged "${BUILD_ID}" -- -u -g # Guess update information, generate zsync file.
 
 EXIT_CODE=$?
 
