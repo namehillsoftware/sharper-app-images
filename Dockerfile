@@ -31,6 +31,8 @@ FROM debian:bullseye-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN echo "#!/usr/bin/env bash \n /appimagetool $* /AppDir" > entrypoint.sh && chmod +x entrypoint.sh
+
 RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends wget ca-certificates fuse file gpg appstream desktop-file-utils zsync -y && \
@@ -42,4 +44,4 @@ COPY --from=build /src/AppImage /AppDir/
 
 WORKDIR /out
 
-ENTRYPOINT ["/appimagetool", "/AppDir"]
+ENTRYPOINT ["/entrypoint.sh"]
